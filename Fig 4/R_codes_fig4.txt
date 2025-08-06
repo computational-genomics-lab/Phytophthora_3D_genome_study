@@ -1,0 +1,168 @@
+#code for inter chromosomal contact plotting heatmap
+
+# Load required package
+if (!require("pheatmap")) install.packages("pheatmap", dependencies = TRUE)
+library(pheatmap)
+
+# Read CSV
+logOE <- read.csv("log2_OE_interchromosomal_matrix.csv", row.names = 1, check.names = FALSE)
+
+# Convert to matrix
+mat <- as.matrix(logOE)
+
+# Read and prepare data
+#logOE <- read.csv("log2_OE_interchromosomal_matrix.csv", row.names = 1, check.names = FALSE)
+#mat <- as.matrix(logOE)
+
+# Compute row sums (total contact strengths)
+#contact_strength <- rowSums(mat, na.rm = TRUE)
+
+# Sort chromosomes by total contact strength
+#ordered_chroms <- names(sort(contact_strength, decreasing = TRUE))
+
+# Reorder the matrix
+#mat_ordered <- mat[ordered_chroms, ordered_chroms]
+
+
+
+# Plot
+
+library(viridis)
+
+# Plot with Viridis color scale
+pheatmap(
+  mat,
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  color = viridis(100),
+  main = "log2(O/E) Inter-chromosomal Contact Map",
+  display_numbers = TRUE,
+  fontsize_row = 10,
+  fontsize_col = 10,
+  border_color = NA
+)
+
+
+
+
+
+#########code of multidimensonal plotting scaleing################
+
+
+
+
+###OTHERS TYPE OF PLOT 2D
+
+# Load packages
+library(ggplot2)
+library(ggrepel)
+library(RColorBrewer)
+
+# Load and prepare data
+logOE <- read.csv("log2_OE_interchromosomal_matrix.csv", row.names = 1, check.names = FALSE)
+mat <- as.matrix(logOE)
+diag(mat) <- 0  # Remove self-interaction bias
+
+# Distance matrix and MDS
+dist_mat <- as.dist(1 / (mat + 1e-6))
+mds <- cmdscale(dist_mat, k = 2)
+
+# Cluster chromosomes by interaction profiles
+hc <- hclust(dist_mat, method = "ward.D2")
+clusters <- cutree(hc, k = 4)  # I can change the number of clusters here
+
+# Build data frame for ggplot
+mds_df <- data.frame(
+  Chromosome = rownames(mds),
+  MDS1 = mds[, 1],
+  MDS2 = mds[, 2],
+  AvgContact = rowMeans(mat),
+  Cluster = factor(clusters)
+)
+
+# Final combined plot
+ggplot(mds_df, aes(x = MDS1, y = MDS2, label = Chromosome, color = Cluster, size = AvgContact)) +
+  geom_point(alpha = 0.8) +
+  geom_text_repel(size = 5, fontface = "bold") +
+  scale_color_brewer(palette = "Set2") +
+  scale_size_continuous(range = c(4, 10), name = "Avg log₂(O/E)") +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Chromosome Spatial Proximity (MDS)",
+    subtitle = "Color: Interaction Cluster | Size: Avg log₂(O/E)",
+    x = "MDS Dimension 1",
+    y = "MDS Dimension 2"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+
+
+
+
+####3D Plotting#####
+
+
+###3D
+
+
+
+# Install if needed
+if (!require("plotly")) install.packages("plotly")
+if (!require("RColorBrewer")) install.packages("RColorBrewer")
+
+# Load libraries
+library(plotly)
+library(RColorBrewer)
+
+# Load and prepare matrix
+logOE <- read.csv("log2_OE_interchromosomal_matrix.csv", row.names = 1, check.names = FALSE)
+mat <- as.matrix(logOE)
+diag(mat) <- 0  # Remove self-interaction
+
+# Create distance matrix (inverse of contact frequency)
+dist_mat <- as.dist(1 / (mat + 1e-6))
+
+# Run 3D MDS
+mds3d <- cmdscale(dist_mat, k = 3, eig = TRUE)
+mds_coords <- as.data.frame(mds3d$points)
+colnames(mds_coords) <- c("X", "Y", "Z")
+mds_coords$Chromosome <- rownames(mds_coords)
+mds_coords$AvgContact <- rowMeans(mat)
+
+# Hierarchical clustering
+hc <- hclust(dist_mat, method = "ward.D2")
+clusters <- cutree(hc, k = 4)  # adjust number of clusters as needed
+mds_coords$Cluster <- factor(clusters)
+
+# Define colors
+cluster_colors <- brewer.pal(n = length(unique(clusters)), name = "Set2")
+
+# Plot with plotly
+plot_ly(
+  data = mds_coords,
+  x = ~X, y = ~Y, z = ~Z,
+  type = "scatter3d",
+  mode = "markers+text",
+  text = ~Chromosome,
+  color = ~Cluster,
+  colors = cluster_colors,
+  marker = list(size = ~sqrt(AvgContact) * 8, opacity = 0.8),
+  textposition = "top center"
+) %>%
+  layout(
+    title = "3D MDS of Chromosome Interactions",
+    scene = list(
+      xaxis = list(title = "MDS1"),
+      yaxis = list(title = "MDS2"),
+      zaxis = list(title = "MDS3")
+    )
+  )
+
+
+
+
+
+
+
