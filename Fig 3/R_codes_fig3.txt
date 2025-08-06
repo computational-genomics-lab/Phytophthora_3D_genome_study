@@ -88,8 +88,9 @@ ggplot(te_effector_counts,
        y = "Count") +
   theme(legend.position = "none")
 
-# Done!
+# Done
 print("Effector domain data saved as 'TE_Family_All_Effector_Domains.csv'")
+
 
 
 
