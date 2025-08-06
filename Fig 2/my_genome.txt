@@ -1,0 +1,19 @@
+HiC_scaffold_1  0       10035213
+HiC_scaffold_2  0       6005774
+HiC_scaffold_3  0       5204247
+HiC_scaffold_4  0       4854107
+HiC_scaffold_5  0       4578824
+HiC_scaffold_6  0       4386091
+HiC_scaffold_7  0       4370543
+HiC_scaffold_8  0       4240137
+HiC_scaffold_9  0       4207489
+HiC_scaffold_10 0       4198913
+HiC_scaffold_11 0       4050250
+HiC_scaffold_12 0       4029041
+HiC_scaffold_13 0       3987571
+HiC_scaffold_14 0       3431876
+HiC_scaffold_15 0       3272040
+HiC_scaffold_16 0       3056082
+HiC_scaffold_17 0       2703969
+
+
