@@ -1,0 +1,56 @@
+###total gene and pfam TE 1995 gene
+
+
+# Load necessary libraries
+library(dplyr)
+library(ggalluvial)
+library(ggplot2)
+
+# Read data
+file_path <- "all_gene_TE_association.bed"
+data <- read.table(file_path, header=FALSE, col.names=c("Gene_ID", "Gene_Name", "TE_ID", "TE_Family", "Conserved_Domain"))
+
+# Remove unannotated domains ("-")
+filtered_data <- data %>% filter(Conserved_Domain != "-")
+
+# Count occurrences of TE families
+te_family_counts <- filtered_data %>%
+    group_by(TE_Family) %>%
+    summarise(Count = n()) %>%
+    arrange(desc(Count))
+
+# Select top 20 TE families
+top_20_families <- te_family_counts %>% top_n(20, wt = Count)
+
+# Filter data for only the top 20 TE families
+filtered_data <- filtered_data %>% filter(TE_Family %in% top_20_families$TE_Family)
+
+# Count occurrences of TE Family → Conserved Domain relationships
+te_pfam_counts <- filtered_data %>%
+    group_by(TE_Family, Conserved_Domain) %>%
+    summarise(Count = n(), .groups = "drop") %>%
+    filter(Count >= 2)  # Ensure minimum occurrence is 2
+
+# Select the top 10 most frequent Pfam domains per TE family
+top_10_pfam_per_family <- te_pfam_counts %>%
+    group_by(TE_Family) %>%
+    top_n(10, wt = Count) %>%
+    ungroup()
+
+# Save Pfam domain data to CSV for manual checking
+write.csv(top_10_pfam_per_family, "TE_Family_Top20_Pfam_Domains.csv", row.names = FALSE)
+
+# Sankey Plot using ggalluvial
+ggplot(top_10_pfam_per_family,
+       aes(axis1 = TE_Family, axis2 = Conserved_Domain, y = Count)) +
+    geom_alluvium(aes(fill = TE_Family), width = 0.3, alpha = 0.8) +
+    geom_stratum(width = 0.3, fill = "lightgray", color = "black") +
+    geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 3) +
+    theme_minimal() +
+    labs(title = "Sankey Plot of TE Families and Their Top 10 Pfam Domains (Min Occurrence: 2)",
+         x = "TE Families → Pfam Domains",
+         y = "Count") +
+    theme(legend.position = "none")
+
+# Print message
+print("Pfam data saved as 'TE_Family_Top20_Pfam_Domains.csv'")
