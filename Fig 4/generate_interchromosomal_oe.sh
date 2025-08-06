@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # CONFIG
-JUICER_JAR="/home/sutripa/kajal/AFTER_FINAL_GENOME_DEVELOPMENT/A_B_compart/juicer_latest/juicer-1.6/scripts/common/juicer_tools.jar"
-HIC_FILE="sorted_clean_P.capsici_isolate_WB2_Final_HiC.hic"
+JUICER_JAR="/home/sutripa/kajal/AFTER_FINAL_GENOME_DEVELOPMENT/A_B_compart/juicer_latest/juicer/scripts/common/juicer_tools.jar"
+HIC_FILE="P.capsici_isolate_WB2_Final_HiC.hic"
 RESOLUTION=10000
 OUTPUT_DIR="oe_matrices"
 NORM="KR"
