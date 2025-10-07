@@ -1,0 +1,21 @@
+Sequenced Read Pairs:  37,205,419
+ Normal Paired: 12,194,874 (32.78%)
+ Chimeric Paired: 10,907,208 (29.32%)
+ Chimeric Ambiguous: 12,934,382 (34.76%)
+ Unmapped: 1,168,955 (3.14%)
+ Ligation Motif Present: 7,296,180 (19.61%)
+Alignable (Normal+Chimeric Paired): 23,102,082 (62.09%)
+Unique Reads: 19,981,027 (53.70%)
+PCR Duplicates: 2,829,457 (7.60%)
+Optical Duplicates: 291,598 (0.78%)
+Library Complexity Estimate: 84,174,616
+Intra-fragment Reads: 3,339,404 (8.98% / 16.71%)
+Below MAPQ Threshold: 7,096,881 (19.07% / 35.52%)
+Hi-C Contacts: 9,544,742 (25.65% / 47.77%)
+ Ligation Motif Present: 2,116,595  (5.69% / 10.59%)
+ 3' Bias (Long Range): 57% - 43%
+ Pair Type %(L-I-O-R): 25% - 25% - 25% - 25%
+Inter-chromosomal: 5,733,897  (15.41% / 28.70%)
+Intra-chromosomal: 3,810,845  (10.24% / 19.07%)
+Short Range (<20Kb): 1,799,970  (4.84% / 9.01%)
+Long Range (>20Kb): 2,010,624  (5.40% / 10.06%)
