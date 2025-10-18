@@ -1,6 +1,0 @@
-"comparison","Significant_TADs","Upregulated","Downregulated"
-"DESeq2_condition_Early_infection_vs_Mycelia_4d_sig005",26,25,1
-"DESeq2_condition_Germinating_Cyst_vs_Zoospore_sig005",70,3,67
-"DESeq2_condition_Late_infection_vs_Early_infection_sig005",17,9,8
-"DESeq2_condition_Mycelia_48h_vs_Germinating_Cyst_sig005",41,38,3
-"DESeq2_condition_Mycelia_4d_vs_Mycelia_48h_sig005",63,50,13
