@@ -1,0 +1,64 @@
+# 
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+# 
+df <- read_csv("TAD_input_with_pattern_category.csv")
+
+#  Clean column names 
+colnames(df) <- c("TAD_ID", "Pattern",
+                  "Germinating_Cyst_vs_Zoospore",
+                  "Mycelia_48h_vs_Germinating_Cyst",
+                  "Mycelia_4d_vs_Mycelia_48h",
+                  "Early_infection_vs_Mycelia_4d",
+                  "Late_infection_vs_Early_infection",
+                  "Category", "Category_ID")
+
+# Select one TAD per Category_ID
+df_single <- df %>%
+  group_by(Category_ID) %>%
+  slice(1) %>%         
+  ungroup()
+
+#  Pivot to long format
+df_long <- df_single %>%
+  pivot_longer(
+    cols = starts_with("Germinating_"):starts_with("Late_infection"),
+    names_to = "Condition",
+    values_to = "Regulation"
+  )
+
+# Set condition order 
+df_long$Condition <- factor(df_long$Condition, levels = c(
+  "Germinating_Cyst_vs_Zoospore",
+  "Mycelia_48h_vs_Germinating_Cyst",
+  "Mycelia_4d_vs_Mycelia_48h",
+  "Early_infection_vs_Mycelia_4d",
+  "Late_infection_vs_Early_infection"
+))
+
+#  Plot
+p <- ggplot(df_long, aes(x = Condition, y = TAD_ID, color = Regulation)) +
+  geom_point(size = 4) +
+  facet_wrap(~Category_ID, ncol = 6, scales = "free_y") +
+  scale_color_manual(
+    values = c("Up" = "#D55E00", "Down" = "#0072B2", "Not Significant" = "grey60")
+  ) +
+  labs(
+    title = "TAD Regulation Across Developmental Stages (1 TAD per Category)",
+    x = "Developmental Comparison",
+    y = "TAD ID",
+    color = "Regulation"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold", size = 10),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+#  Print plot
+print(p)
