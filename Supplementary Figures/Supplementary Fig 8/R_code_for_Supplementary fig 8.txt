@@ -1,0 +1,35 @@
+library(tidyverse)
+
+data <- read.table("top_100_pfam_compartment_AB.bed", 
+                   sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+colnames(data) <- c("Scaffold", "Start", "End", "Gene", "Domain", "Compartment")
+
+# Calculate frequencies for each domain in compartments A and B
+domain_frequencies <- data %>%
+  group_by(Domain, Compartment) %>%
+  summarise(Frequency = n()) %>%
+  ungroup()
+
+bubble_data <- domain_frequencies %>%
+  pivot_wider(names_from = Compartment, values_from = Frequency, values_fill = list(Frequency = 0))
+
+# plot
+ggplot(bubble_data, aes(x = Domain)) +
+  geom_point(aes(y = "A", size = A, color = "A"), alpha = 0.6) +
+  geom_point(aes(y = "B", size = B, color = "B"), alpha = 0.6) +
+  scale_size(range = c(3, 15), name = "Frequency") +
+  scale_color_manual(values = c("A" = "hotpink1", "B" = "skyblue"), name = "Compartment") +
+  labs(title = "Domain Frequencies in Compartments A and B",
+       x = "Domain",
+       y = "Compartment") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold"),
+    axis.title.x = element_text(face = "bold"),
+    axis.title.y = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.title = element_text(face = "bold")
+  ) +
+  guides(color = guide_legend(override.aes = list(size = 5)))
+
