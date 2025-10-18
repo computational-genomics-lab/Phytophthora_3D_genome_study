@@ -1,0 +1,7 @@
+".y.","group1","group2","p","p.adj","p.format","p.signif","method"
+"TSS_count","-20kb to -10kb","-10kb to 0kb",4.57475583168496e-06,2.3e-05,"4.6e-06","****","Wilcoxon"
+"TSS_count","-20kb to -10kb","0kb to 10kb",0.00272065125373453,0.0082,"0.0027","**","Wilcoxon"
+"TSS_count","-20kb to -10kb","10kb to 20kb",0.130538599613283,0.26,"0.1305","ns","Wilcoxon"
+"TSS_count","-10kb to 0kb","0kb to 10kb",0.153573175981919,0.26,"0.1536","ns","Wilcoxon"
+"TSS_count","-10kb to 0kb","10kb to 20kb",5.42792198403837e-08,3.3e-07,"5.4e-08","****","Wilcoxon"
+"TSS_count","0kb to 10kb","10kb to 20kb",5.24079044504169e-05,0.00021,"5.2e-05","****","Wilcoxon"

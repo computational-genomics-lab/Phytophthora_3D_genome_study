@@ -1,0 +1,4 @@
+group1	group2	p_value
+-20kb to -10kb	-10kb to 0kb	1.18474668100226e-05
+-10kb to 0kb	0kb to 10kb	0.247499402306464
+0kb to 10kb	10kb to 20kb	0.00311374060801451
