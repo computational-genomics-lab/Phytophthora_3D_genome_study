@@ -304,6 +304,69 @@ for (cond in levels(deg_all$Condition)) {
 }
 
 
+##############
+library(tidyverse)
+
+# Read data
+df <- read.csv("Annotated_Secreted_B_DEGs_with_Pfam.csv")
+
+# Clean data (remove NA / empty Pfam)
+df_clean <- df %>%
+  filter(!is.na(Pfam_domains),
+         Pfam_domains != "NA",
+         Pfam_domains != "")
+
+# Count Pfam domains
+pfam_counts <- df_clean %>%
+  count(Pfam_domains, sort = TRUE)
+
+# Top 10 domains
+top10 <- pfam_counts %>%
+  slice_head(n = 10)
+
+# Remaining as "Others"
+others <- pfam_counts %>%
+  slice(-(1:10)) %>%
+  summarise(
+    Pfam_domains = "Others",
+    n = sum(n)
+  )
+
+# Combine
+pfam_final <- bind_rows(top10, others)
+
+# Calculate percentage (ONLY annotated genes)
+total_annotated <- sum(pfam_final$n)
+
+pfam_final <- pfam_final %>%
+  mutate(Percent = n / total_annotated * 100)
+
+# Order for plotting (Others last)
+pfam_final$Pfam_domains <- factor(
+  pfam_final$Pfam_domains,
+  levels = c(top10$Pfam_domains, "Others")
+)
+
+# Plot
+ggplot(pfam_final, aes(x = Pfam_domains, y = Percent, fill = Pfam_domains)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  scale_fill_brewer(palette = "Paired") +
+  labs(
+    title = "Top 10 Pfam Domains in Secreted DEGs (B Compartment)",
+    subtitle = "Percent calculated from Pfam-annotated genes",
+    x = "Pfam Domains",
+    y = "Percentage (%)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none"
+  )
+
+
+
+
 
 
 
