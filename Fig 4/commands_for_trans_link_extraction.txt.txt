@@ -1,0 +1,18 @@
+hic2cool convert sorted_clean_P.capsici_isolate_WB2_Final_HiC.hic WB2.cool
+
+
+hicConvertFormat  --matrices WB2.mcool::resolutions/10000 --inputFormat cool --outputFormat h5  --outFileName WB2_10kb.h5
+
+hicCorrectMatrix correct --matrix WB2_10kb.h5 --correctionMethod ICE --filterThreshold -1.5 2.5 --outFileName WB2_10kb_ICE_corrected.h5
+
+
+hicTransform --matrix WB2_10kb_ICE_corrected.h5 --method obs_exp --outFileName WB2_10kb_OE.h5
+
+hicConvertFormat --matrices WB2_10kb_OE.h5 --inputFormat h5 --outputFormat cool --outFileName WB2_10kb_OE.cool
+
+python script_for_WB2_10kb_OE.cool_processing_and_trans_link_extraction.py
+
+#Final trans-link file- interchromosomal_links.tsv
+
+
+
