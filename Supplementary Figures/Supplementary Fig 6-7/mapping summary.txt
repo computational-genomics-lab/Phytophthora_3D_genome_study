@@ -1,0 +1,87 @@
+bowtie2 --local --very-sensitive-local -p 40 -k 10 \
+  -x sorted_clean_P.capsici_isolate_WB2_Final_HiC \
+  -1 SRR10080680_1.fastq -2 SRR10080680_2.fastq \
+  -S P_capsici_CENPA_IP_local.sam
+
+####mapping summary
+
+
+20150762 reads; of these:
+  20150762 (100.00%) were paired; of these:
+    18840476 (93.50%) aligned concordantly 0 times
+    615855 (3.06%) aligned concordantly exactly 1 time
+    694431 (3.45%) aligned concordantly >1 times
+    ----
+    18840476 pairs aligned concordantly 0 times; of these:
+      130785 (0.69%) aligned discordantly 1 time
+    ----
+    18709691 pairs aligned 0 times concordantly or discordantly; of these:
+      37419382 mates make up the pairs; of these:
+        36896699 (98.60%) aligned 0 times
+        144439 (0.39%) aligned exactly 1 time
+        378244 (1.01%) aligned >1 times
+8.45% overall alignment rate
+
+
+
+# Run Input with Local Alignment
+bowtie2 --local --very-sensitive-local -p 40 -k 10 \
+  -x sorted_clean_P.capsici_isolate_WB2_Final_HiC \
+  -1 SRR10080681_1.fastq -2 SRR10080681_2.fastq \
+  -S P_capsici_CENPA_Input_local.sam
+
+
+####mapping summary
+
+
+# Run Input with Local Alignment
+bowtie2 --local --very-sensitive-local -p 40 -k 10 \
+  -x sorted_clean_P.capsici_isolate_WB2_Final_HiC \
+  -1 SRR10080681_1.fastq -2 SRR10080681_2.fastq \
+  -S P_capsici_CENPA_Input_local.sam
+
+22901954 reads; of these:
+  22901954 (100.00%) were paired; of these:
+    21291882 (92.97%) aligned concordantly 0 times
+    696536 (3.04%) aligned concordantly exactly 1 time
+    913536 (3.99%) aligned concordantly >1 times
+    ----
+    21291882 pairs aligned concordantly 0 times; of these:
+      172019 (0.81%) aligned discordantly 1 time
+    ----
+    21119863 pairs aligned 0 times concordantly or discordantly; of these:
+      42239726 mates make up the pairs; of these:
+        41642617 (98.59%) aligned 0 times
+        144856 (0.34%) aligned exactly 1 time
+        452253 (1.07%) aligned >1 times
+9.09% overall alignment rate
+
+
+
+
+
+# Process IP, then process Input, then index both
+samtools view -@ 40 -bS P_capsici_CENPA_IP_local.sam | samtools sort -@ 40 -o P_capsici_CENPA_IP_local.sorted.bam && \
+samtools view -@ 40 -bS P_capsici_CENPA_Input_local.sam | samtools sort -@ 40 -o P_capsici_CENPA_Input_local.sorted.bam && \
+samtools index P_capsici_CENPA_IP_local.sorted.bam && \
+samtools index P_capsici_CENPA_Input_local.sorted.bam 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
