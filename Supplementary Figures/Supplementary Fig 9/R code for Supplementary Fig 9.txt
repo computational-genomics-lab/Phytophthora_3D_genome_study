@@ -1,0 +1,186 @@
+###############suppli figure (inter chromosomal hub gene expression pattern)
+
+
+
+# ===========================
+# Load libraries
+# ===========================
+library(dplyr)
+
+# ===========================
+# 1. Load data
+# ===========================
+links <- read.table("bins_involved_in_hub_and_link_with_hub_id.bed",
+                    header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+
+colnames(links)[ncol(links)] <- "hub_id"
+
+expr <- read.csv("TPM_normalized_counts_all_mean_with_coords_compartment.csv",
+                 header = TRUE)
+
+colnames(expr)[1] <- "gene_id"
+expr$gene_id <- trimws(tolower(expr$gene_id))
+
+# ===========================
+# 2. DEG files
+# ===========================
+deg_files <- list(
+  GC_vs_Zoospore = "DESeq2_condition_Germinating_Cyst_vs_Zoospore_sig005.csv",
+  M48_vs_GC = "DESeq2_condition_Mycelia_48h_vs_Germinating_Cyst_sig005.csv",
+  M4d_vs_M48 = "DESeq2_condition_Mycelia_4d_vs_Mycelia_48h_sig005.csv",
+  Early_vs_M4d = "DESeq2_condition_Early_infection_vs_Mycelia_4d_sig005.csv",
+  Late_vs_M4d = "DESeq2_condition_Late_infection_vs_Mycelia_4d_sig005.csv",
+  Late_vs_Early = "DESeq2_condition_Late_infection_vs_Early_infection_sig005.csv"
+)
+
+# ===========================
+# 3. Function to get hub genes
+# ===========================
+get_hub_genes <- function(hub_name) {
+  
+  hub_links <- links %>% filter(hub_id == hub_name)
+  
+  bins1 <- hub_links[, c(1,2,3)]
+  colnames(bins1) <- c("chr","start","end")
+  
+  bins2 <- hub_links[, c(4,5,6)]
+  colnames(bins2) <- c("chr","start","end")
+  
+  bins_all <- unique(rbind(bins1, bins2))
+  
+  genes <- expr %>%
+    inner_join(bins_all, by = "chr") %>%
+    filter(start.x <= end.y & end.x >= start.y)
+  
+  unique(genes$gene_id)
+}
+
+# ===========================
+# 4. Main loop
+# ===========================
+all_hubs <- unique(links$hub_id)
+
+final_results <- data.frame()
+
+for (hub in all_hubs) {
+  
+  hub_genes <- get_hub_genes(hub)
+  
+  if (length(hub_genes) == 0) next
+  
+  for (name in names(deg_files)) {
+    
+    deg <- read.csv(deg_files[[name]], header = TRUE, row.names = 1)
+    
+    deg$gene_id <- trimws(tolower(rownames(deg)))
+    
+    # Filter DEGs in this hub
+    deg_hub <- deg[deg$gene_id %in% hub_genes, ]
+    
+    # Count up/down
+    up_count <- sum(deg_hub$log2FoldChange > 0, na.rm = TRUE)
+    down_count <- sum(deg_hub$log2FoldChange < 0, na.rm = TRUE)
+    
+    # Store
+    final_results <- rbind(final_results, data.frame(
+      hub_id = hub,
+      comparison = name,
+      total_genes = length(hub_genes),
+      up_count = up_count,
+      down_count = down_count,
+      up_prop = up_count / length(hub_genes),
+      down_prop = down_count / length(hub_genes)
+    ))
+  }
+}
+
+# ===========================
+# 5. Save file
+# ===========================
+write.csv(final_results,
+          "Hub_DEG_up_down_analysis.csv",
+          row.names = FALSE)
+
+# ===========================
+# 6. View
+# ===========================
+head(final_results)
+
+
+
+
+#########################heatmap, hub of gene expression
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(patchwork)   # for combining plots
+
+# ---------------------------
+# 1. Load data
+# ---------------------------
+df <- read.csv("Hub_DEG_up_down_analysis.csv", stringsAsFactors = FALSE)
+
+# ---------------------------
+# 2. Factor ordering (important for clean plots)
+# ---------------------------
+df$comparison <- factor(df$comparison,
+                       levels = c("GC_vs_Zoospore",
+                                  "M48_vs_GC",
+                                  "M4d_vs_M48",
+                                  "Early_vs_M4d",
+                                  "Late_vs_M4d",
+                                  "Late_vs_Early"))
+
+# Optional: order hubs numerically
+df$hub_id <- factor(df$hub_id,
+                    levels = sort(unique(df$hub_id)))
+df$hub_id <- factor(df$hub_id,
+                    levels = rev(paste0("hub_", sort(as.numeric(gsub("hub_", "", unique(df$hub_id)))))))
+# ---------------------------
+# 3. UP regulation heatmap
+# ---------------------------
+p_up <- ggplot(df, aes(x = comparison, y = hub_id, fill = up_prop)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "Upregulated genes",
+       x = "Condition",
+       y = "Hub",
+       fill = "Proportion") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ---------------------------
+# 4. DOWN regulation heatmap
+# ---------------------------
+p_down <- ggplot(df, aes(x = comparison, y = hub_id, fill = down_prop)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Downregulated genes",
+       x = "Condition",
+       y = "Hub",
+       fill = "Proportion") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ---------------------------
+# 5. Combine side-by-side
+# ---------------------------
+p_up + p_down
+
+
+#for more compact plot
+df_long <- df %>%
+  pivot_longer(cols = c(up_prop, down_prop),
+               names_to = "direction",
+               values_to = "value")
+
+ggplot(df_long, aes(x = comparison, y = hub_id, fill = value)) +
+  geom_tile() +
+  facet_wrap(~direction) +
+  scale_fill_gradient(low = "white", high = "darkred") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
