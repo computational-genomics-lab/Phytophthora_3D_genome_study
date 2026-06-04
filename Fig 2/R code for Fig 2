@@ -357,7 +357,185 @@ kpPoints(kp,
 
 
 
+###################figure 2d
 
+library(data.table)
+library(ggplot2)
+
+################
+# READ FILES
+##########
+
+copia <- fread(
+    "Copia_density_percent_10kb.bed",
+    col.names = c("chr","start","end","density")
+)
+
+cent <- fread(
+    "centromeric_position.txt",
+    col.names = c("chr","start","end")
+)
+
+
+# DEFINE BIN MIDPOINTS
+############
+copia[, midpoint := (start + end)/2]
+
+
+# CLASSIFY BINS
+###################
+
+copia[, region := "Non-centromeric"]
+
+for(i in 1:nrow(cent)) {
+
+    copia[
+        chr == cent$chr[i] &
+        midpoint >= cent$start[i] &
+        midpoint <= cent$end[i],
+        region := "Centromeric"
+    ]
+}
+
+##############################
+# CHECK BIN COUNTS
+####################
+table(copia$region)
+
+
+# SUMMARY STATISTICS
+#############################
+summary_stats <- copia[
+    ,
+    .(
+        N = .N,
+        Mean = mean(density),
+        Median = median(density),
+        SD = sd(density),
+        Max = max(density)
+    ),
+    by = region
+]
+
+print(summary_stats)
+
+
+# WILCOXON RANK-SUM TEST
+#############################
+
+wilcox_result <- wilcox.test(
+    density ~ region,
+    data = copia,
+    alternative = "two.sided"
+)
+
+print(wilcox_result)
+
+
+# FOLD ENRICHMENT
+######
+
+cent_median <- median(
+    copia[region == "Centromeric"]$density
+)
+
+noncent_median <- median(
+    copia[region == "Non-centromeric"]$density
+)
+
+fold_change <- cent_median / noncent_median
+
+cat("\nMedian fold enrichment =", fold_change, "\n")
+
+
+# LOG TRANSFORM FOR PLOTTING
+###############################
+
+copia[, log_density := log10(density + 1)]
+
+
+# PLOT
+##########################
+
+library(ggplot2)
+library(ggpubr)
+
+# log10(x+1)
+copia[, log_density := log10(density + 1)]
+
+p <- ggplot(
+    copia,
+    aes(
+        x = region,
+        y = log_density,
+        fill = region
+    )
+) +
+
+    geom_violin(
+        trim = FALSE,
+        alpha = 0.6,
+        linewidth = 0.5
+    ) +
+
+    stat_summary(
+        fun = mean,
+        geom = "point",
+        shape = 22,
+        size = 5,
+        fill = "white",
+        color = "black",
+        stroke = 1.2
+    ) +
+
+    scale_fill_manual(
+        values = c(
+            "Centromeric" = "#D55E00",
+            "Non-centromeric" = "#0072B2"
+        )
+    ) +
+
+    stat_compare_means(
+        method = "wilcox.test",
+        label = "p.signif",
+        size = 6
+    ) +
+
+    stat_compare_means(
+        method = "wilcox.test",
+        label = "p.format",
+        size = 5,
+        vjust = 2
+    ) +
+
+    labs(
+        x = "",
+        y = expression(log[10]("Copia density (%)" + 1)),
+        title = "Genome-wide Copia density",
+        subtitle = "All 10-kb bins"
+    ) +
+
+    theme_bw(base_size = 15) +
+
+    theme(
+        legend.position = "none",
+
+        plot.title = element_text(
+            face = "bold",
+            hjust = 0.5
+        ),
+
+        plot.subtitle = element_text(
+            hjust = 0.5
+        ),
+
+        axis.text.x = element_text(
+            face = "bold",
+            size = 13
+        )
+    )
+
+print(p)
 
 
 
