@@ -1,0 +1,314 @@
+#########figure a
+
+
+
+library(data.table)
+library(ggplot2)
+library(scales)
+library(zoo)
+
+# Read files
+genome <- fread("Phytophthora_capsici_WB2.genome",
+                col.names = c("chr", "length"))
+
+copia <- fread("Copia_density_percent_10kb.bed",
+               col.names = c("chr", "start", "end", "density"))
+
+cent <- fread("centromeric_position.txt",
+              col.names = c("chr", "start", "end"))
+
+# Midpoint of bins
+copia[, midpoint := (start + end)/2]
+
+# Chromosome order
+copia[, chr := factor(chr, levels = genome$chr)]
+cent[, chr := factor(chr, levels = genome$chr)]
+
+# 50 kb smoothing
+copia[, density_smooth :=
+          rollmean(density,
+                   k = 10,
+                   fill = NA,
+                   align = "center"),
+      by = chr]
+
+# Plot
+p <- ggplot() +
+
+    # Centromere shading
+    geom_rect(data = cent,
+              aes(xmin = start,
+                  xmax = end,
+                  ymin = -Inf,
+                  ymax = Inf),
+              fill = "gold",
+              alpha = 0.25) +
+
+    # Filled TE landscape
+    geom_area(data = copia,
+              aes(x = midpoint,
+                  y = density_smooth),
+              fill = "steelblue",
+              alpha = 0.45) +
+
+    # Smoothed line
+    geom_line(data = copia,
+              aes(x = midpoint,
+                  y = density_smooth),
+              color = "navy",
+              linewidth = 0.5) +
+
+    facet_wrap(~chr,
+               scales = "free_x",
+               ncol = 3) +
+
+    scale_x_continuous(
+        labels = label_number(scale = 1e-6,
+                              suffix = " Mb")
+    ) +
+
+    labs(
+        x = "Genomic position",
+        y = "Copia density (%)",
+        title = "Chromosome-wide Copia enrichment landscape",
+        subtitle = "100-kb rolling mean; centromeres highlighted"
+    ) +
+
+    theme_bw(base_size = 10) +
+
+    theme(
+        strip.background = element_rect(fill = "grey85"),
+        strip.text = element_text(face = "bold", size = 8),
+
+        panel.grid.major.y = element_line(
+            colour = "grey85",
+            linewidth = 0.3
+        ),
+
+        panel.grid.minor = element_blank(),
+
+        axis.text.x = element_text(
+            angle = 20,
+            hjust = 0.5
+        ),
+
+        plot.title = element_text(
+            face = "bold",
+            size = 12
+        )
+    )
+
+print(p)
+
+
+
+
+
+#########figure b
+
+
+
+library(data.table)
+library(ggplot2)
+
+####################################################
+# READ FILES
+####################################################
+
+copia <- fread(
+    "Copia_density_percent_10kb.bed",
+    col.names = c("chr", "start", "end", "density")
+)
+
+cent <- fread(
+    "centromeric_position.txt",
+    col.names = c("chr", "start", "end")
+)
+
+####################################################
+# MIDPOINT
+####################################################
+
+copia[, midpoint := (start + end)/2]
+
+####################################################
+# ASSIGN REGION
+####################################################
+
+copia[, region := "Non-centromeric"]
+
+for(i in 1:nrow(cent)) {
+
+    copia[
+        chr == cent$chr[i] &
+        midpoint >= cent$start[i] &
+        midpoint <= cent$end[i],
+        region := "Centromeric"
+    ]
+}
+
+####################################################
+# CONVERT SCAFFOLD NAME TO NUMBER
+####################################################
+
+copia[, chr_num := as.integer(sub("HiC_scaffold_", "", chr))]
+
+####################################################
+# SCAFFOLD-WISE SUMMARY
+####################################################
+
+scaffold_mean <- copia[
+    ,
+    .(
+        Mean_density = mean(density),
+        Median_density = median(density),
+        Occupancy = 100 * mean(density > 0)
+    ),
+    by = .(chr_num, region)
+]
+
+####################################################
+# WIDE FORMAT
+####################################################
+
+mean_wide <- dcast(
+    scaffold_mean,
+    chr_num ~ region,
+    value.var = "Mean_density"
+)
+
+####################################################
+# CLEAN COLUMN NAMES
+####################################################
+
+setnames(
+    mean_wide,
+    c("Centromeric", "Non-centromeric"),
+    c("Centromere", "NonCentromere")
+)
+
+####################################################
+# FOLD ENRICHMENT
+####################################################
+
+mean_wide[
+    ,
+    Fold_enrichment := Centromere / NonCentromere
+]
+
+####################################################
+# SUMMARY STATS
+####################################################
+
+cat("\n=============================\n")
+cat("SCAFFOLD ENRICHMENT SUMMARY\n")
+cat("=============================\n")
+
+cat("\nMedian fold enrichment = ",
+    median(mean_wide$Fold_enrichment, na.rm = TRUE), "\n")
+
+cat("Mean fold enrichment = ",
+    mean(mean_wide$Fold_enrichment, na.rm = TRUE), "\n")
+
+####################################################
+# PAIRED WILCOXON TEST
+####################################################
+
+wilcox_result <- wilcox.test(
+    mean_wide$Centromere,
+    mean_wide$NonCentromere,
+    paired = TRUE
+)
+
+print(wilcox_result)
+
+####################################################
+# PLOT DATA
+####################################################
+
+plot_data <- melt(
+    mean_wide,
+    id.vars = "chr_num",
+    measure.vars = c("Centromere", "NonCentromere"),
+    variable.name = "Region",
+    value.name = "MeanDensity"
+)
+
+####################################################
+# PLOT
+####################################################
+
+p <- ggplot(
+    plot_data,
+    aes(
+        x = Region,
+        y = MeanDensity,
+        group = chr_num
+    )
+) +
+
+    geom_line(
+        color = "grey60",
+        linewidth = 0.8
+    ) +
+
+    geom_point(
+        aes(color = Region),
+        size = 3
+    ) +
+
+    geom_text(
+        data = plot_data[Region == "Centromere"],
+        aes(label = chr_num),
+        hjust = -0.2,
+        size = 3
+    ) +
+
+    scale_color_manual(
+        values = c(
+            "Centromere" = "#D55E00",
+            "NonCentromere" = "#0072B2"
+        )
+    ) +
+
+    coord_cartesian(clip = "off") +
+
+    labs(
+        x = "",
+        y = "Mean Copia density (%)",
+        title = "Scaffold-wise Copia enrichment",
+        subtitle = paste0(
+            "Paired Wilcoxon p = ",
+            signif(wilcox_result$p.value, 3)
+        )
+    ) +
+
+    theme_bw(base_size = 14) +
+
+    theme(
+        legend.position = "none",
+        plot.margin = margin(5.5, 30, 5.5, 5.5),
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5)
+    )
+
+print(p)
+
+####################################################
+# FINAL TABLE
+####################################################
+
+mean_wide[order(-Fold_enrichment)]
+####################################################
+# PER-SCAFFOLD TABLE
+####################################################
+
+cat("\n========================================\n")
+cat("PER-SCAFFOLD FOLD ENRICHMENT\n")
+cat("========================================\n")
+
+print(
+    mean_wide[
+        order(-Fold_enrichment)
+    ]
+)

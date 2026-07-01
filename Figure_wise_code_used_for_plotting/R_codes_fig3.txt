@@ -1,0 +1,96 @@
+###plotting bar plot for % of TE associated gene
+
+
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+
+# Define your data
+total_genes <- 19141
+te_associated_genes <- 1992
+total_effectors <- 916
+te_associated_effectors <- 125
+
+# Create a dataframe
+df <- data.frame(
+    Category = factor(rep(c("Genes", "Effectors"), times = c(total_genes, total_effectors)), 
+                      levels = c("Genes", "Effectors")),  # Ensure Genes come first
+    TE_Associated = c(rep(1, te_associated_genes), rep(0, total_genes - te_associated_genes),
+                      rep(1, te_associated_effectors), rep(0, total_effectors - te_associated_effectors))
+)
+
+# Perform a t-test for TE association differences
+t_test <- t.test(TE_Associated ~ Category, data = df)
+
+# Print the exact t-test p-value in the console
+cat("T-test p-value:", t_test$p.value, "\n")
+
+# Determine significance label for the plot
+sig_label <- ifelse(t_test$p.value < 0.01, "p < 0.01", "ns")
+
+# Calculate TE frequency as a percentage
+df_summary <- df %>%
+    group_by(Category) %>%
+    summarise(TE_Frequency = mean(TE_Associated) * 100)  # Convert to percentage
+
+# Plot TE association frequency with significance
+ggplot(df_summary, aes(x = Category, y = TE_Frequency, fill = Category)) +
+    geom_bar(stat = "identity", width = 0.6) +
+    scale_fill_manual(values = c("lightgreen", "lightblue")) +
+    theme_minimal(base_size = 16) +  # Increase font size
+    labs(title = "TE Association Frequency in Genes vs. Effectors",
+         x = "Category",
+         y = "TE Overlap Frequency (%)") +
+    annotate("text", x = 1.5, y = max(df_summary$TE_Frequency) + 2,  # Adjust position for clarity
+             label = sig_label, size = 6, color = "black", fontface = "bold")
+
+
+
+
+
+
+
+
+
+#########code for snake plot effector associated genes################
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(ggalluvial)
+library(ggplot2)
+
+# Read effector-TE data
+file_path <- "TE_associated_effectors.bed"
+data <- read.table(file_path, header = FALSE, col.names = c("Effector_Domain", "TE_Family"))
+
+# Remove unannotated domains ("-")
+filtered_data <- data %>% filter(Effector_Domain != "-")
+
+# Count TE Family → Effector Domain relationships
+te_effector_counts <- filtered_data %>%
+  group_by(TE_Family, Effector_Domain) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Save the full table for manual checking
+write.csv(te_effector_counts, "TE_Family_All_Effector_Domains.csv", row.names = FALSE)
+
+# Sankey Plot with all data
+ggplot(te_effector_counts,
+       aes(axis1 = TE_Family, axis2 = Effector_Domain, y = Count)) +
+  geom_alluvium(aes(fill = TE_Family), width = 0.3, alpha = 0.8) +
+  geom_stratum(width = 0.3, fill = "lightgray", color = "black") +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 3) +
+  theme_minimal() +
+  labs(title = "Sankey Plot of All TE Families and Effector Domains",
+       x = "TE Families → Effector Domains",
+       y = "Count") +
+  theme(legend.position = "none")
+
+# Done
+print("Effector domain data saved as 'TE_Family_All_Effector_Domains.csv'")
+
+
+
+

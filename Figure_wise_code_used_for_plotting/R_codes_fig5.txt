@@ -1,0 +1,598 @@
+##Gene densityAB
+
+
+# Load required library
+library(ggplot2)
+
+# Load gene density data for compartments A and B
+compartment_A_gene <- read.table("final_A_gene_density.bedgraph", header = FALSE)
+compartment_B_gene <- read.table("final_B_gene_density.bedgraph", header = FALSE)
+
+# Extract gene density (5th column)
+gene_density_A <- compartment_A_gene$V5
+gene_density_B <- compartment_B_gene$V5
+
+# Create a combined data frame
+gene_data <- data.frame(
+    Compartment = c(rep("A", length(gene_density_A)), rep("B", length(gene_density_B))),
+    Gene_Density = c(gene_density_A, gene_density_B)
+)
+
+# Perform Welch's t-test
+t_test_result_gene <- t.test(Gene_Density ~ Compartment, data = gene_data)
+
+# Determine significance label based on p-value
+significance_label_gene <- ifelse(t_test_result_gene$p.value < 0.0001, "****",
+                                  ifelse(t_test_result_gene$p.value < 0.001, "***",
+                                         ifelse(t_test_result_gene$p.value < 0.01, "**",
+                                                ifelse(t_test_result_gene$p.value < 0.05, "*", "ns"))))
+
+# Print the t-test result
+print(t_test_result_gene)
+
+
+ggplot(gene_data, aes(x = Compartment, y = Gene_Density, fill = Compartment)) +
+    # Violin plot
+    geom_violin(trim = FALSE, alpha = 0.6, color = NA) +
+
+    # Boxplot with colored fill from aes
+    geom_boxplot(outlier.shape = 16, outlier.colour = "red", 
+                 width = 0.2, color = "black") +
+
+    labs(title = "Comparison of Gene Density Between A and B Compartments",
+         y = "Gene Density (per 10kb)",
+         x = "Compartment") +
+
+    theme_minimal(base_size = 15) +
+
+    # Significance stars
+    annotate("text", x = 1.5, y = max(gene_data$Gene_Density) * 1.05, 
+             label = significance_label_gene, size = 6, color = "black", fontface = "bold") +
+
+    # p-value text
+    annotate("text", x = 1.5, y = max(gene_data$Gene_Density) * 1.1, 
+             label = paste0("p = ", formatC(t_test_result_gene$p.value, format = "e", digits = 2)), 
+             size = 5, color = "black", fontface = "italic") +
+
+    theme(axis.title = element_text(size = 14, face = "bold"),
+          axis.text = element_text(size = 12),
+          plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+          legend.position = "none") +
+
+    scale_fill_manual(values = c("A" = "#FF6347", "B" = "#4682B4"))
+
+
+
+
+
+##REPEAT DENSITY AB
+
+
+## Repeat Density Analysis for Compartments A and B
+
+# Load required library
+library(ggplot2)
+
+# Load repeat density data for compartments A and B
+compartment_A_repeat <- read.table("final_A_repeat_density.bedgraph", header = FALSE)
+compartment_B_repeat <- read.table("final_B_repeat_density.bedgraph", header = FALSE)
+
+# Extract repeat density (5th column)
+repeat_density_A <- compartment_A_repeat$V5
+repeat_density_B <- compartment_B_repeat$V5
+
+# Create a combined data frame
+repeat_data <- data.frame(
+    Compartment = c(rep("A", length(repeat_density_A)), rep("B", length(repeat_density_B))),
+    Repeat_Density = c(repeat_density_A, repeat_density_B)
+)
+
+# Perform Welch's t-test
+t_test_result_repeat <- t.test(Repeat_Density ~ Compartment, data = repeat_data)
+
+# Determine significance label based on p-value
+significance_label_repeat <- ifelse(t_test_result_repeat$p.value < 0.0001, "****",
+                                    ifelse(t_test_result_repeat$p.value < 0.001, "***",
+                                           ifelse(t_test_result_repeat$p.value < 0.01, "**",
+                                                  ifelse(t_test_result_repeat$p.value < 0.05, "*", "ns"))))
+
+# Print the t-test result
+print(t_test_result_repeat)
+
+# Create a plotting version of the data where values > 40 are capped at 40
+repeat_data_plot <- repeat_data
+repeat_data_plot$Repeat_Density <- ifelse(repeat_data_plot$Repeat_Density > 40, 40, repeat_data_plot$Repeat_Density)
+
+# Plot using capped values
+ggplot(repeat_data_plot, aes(x = Compartment, y = Repeat_Density, fill = Compartment)) +
+    geom_violin(trim = FALSE, alpha = 0.6, color = NA) +
+    geom_boxplot(outlier.shape = 16, outlier.colour = "red", width = 0.2, color = "black") +
+    labs(title = "Comparison of Repeat Density Between A and B Compartments",
+         y = "Repeat Density (per 10kb)", x = "Compartment") +
+    theme_minimal(base_size = 15) +
+
+    # Position annotations within new capped range
+    annotate("text", x = 1.5, y = 36, 
+             label = significance_label_repeat, size = 6, color = "black", fontface = "bold") +
+    annotate("text", x = 1.5, y = 39, 
+             label = paste0("p = ", formatC(t_test_result_repeat$p.value, format = "e", digits = 2)), 
+             size = 5, color = "black", fontface = "italic") +
+
+    theme(axis.title = element_text(size = 14, face = "bold"),
+          axis.text = element_text(size = 12),
+          plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+          legend.position = "none") +
+    scale_fill_manual(values = c("A" = "#FF6347", "B" = "#4682B4"))
+
+
+
+
+
+
+## GC Content Analysis for Compartments A and B
+
+# Load required library
+library(ggplot2)
+
+# Load GC content data for compartments A and B
+compartment_A_GC <- read.table("final_A_GC_content.bedgraph", header = FALSE)
+compartment_B_GC <- read.table("final_B_GC_content.bedgraph", header = FALSE)
+
+# Extract GC content (5th column)
+GC_content_A <- compartment_A_GC$V5
+GC_content_B <- compartment_B_GC$V5
+
+# Create a combined data frame
+GC_data <- data.frame(
+    Compartment = c(rep("A", length(GC_content_A)), rep("B", length(GC_content_B))),
+    GC_Content = c(GC_content_A, GC_content_B)
+)
+
+# Perform Welch's t-test
+t_test_result_GC <- t.test(GC_Content ~ Compartment, data = GC_data)
+
+# Determine significance label based on p-value
+significance_label_GC <- ifelse(t_test_result_GC$p.value < 0.0001, "****",
+                                ifelse(t_test_result_GC$p.value < 0.001, "***",
+                                       ifelse(t_test_result_GC$p.value < 0.01, "**",
+                                              ifelse(t_test_result_GC$p.value < 0.05, "*", "ns"))))
+
+# Print the t-test result
+print(t_test_result_GC)
+
+
+
+ggplot(GC_data, aes(x = Compartment, y = GC_Content, fill = Compartment)) +
+    geom_violin(trim = FALSE, alpha = 0.6, color = NA) +
+    geom_boxplot(outlier.shape = 16, outlier.colour = "red", width = 0.2, color = "black") +
+    labs(title = "Comparison of GC Content Between A and B Compartments",
+         y = "GC Content (% per 10kb)", x = "Compartment") +
+    theme_minimal(base_size = 15) +
+    annotate("text", x = 1.5, y = max(GC_data$GC_Content) * 1.05, 
+             label = significance_label_GC, size = 6, color = "black", fontface = "bold") +
+    annotate("text", x = 1.5, y = max(GC_data$GC_Content) * 1.1, 
+             label = paste0("p = ", formatC(t_test_result_GC$p.value, format = "e", digits = 2)), 
+             size = 5, color = "black", fontface = "italic") +
+    theme(axis.title = element_text(size = 14, face = "bold"),
+          axis.text = element_text(size = 12),
+          plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+          legend.position = "none") +
+    scale_fill_manual(values = c("A" = "#FF6347", "B" = "#4682B4"))
+
+
+
+
+#METHYLATION DENSITY
+
+
+
+## 5mC Methylation Density Analysis for Compartments A and B
+
+# Load required library
+library(ggplot2)
+
+# Load methylation density data for compartments A and B
+compartment_A_meth <- read.table("final_A_6mA_Methylation_density.bedgraph", header = FALSE)
+compartment_B_meth <- read.table("final_B_6mA_Methylation_density.bedgraph", header = FALSE)
+
+# Extract methylation density (5th column)
+meth_density_A <- compartment_A_meth$V5
+meth_density_B <- compartment_B_meth$V5
+
+# Create a combined data frame
+meth_data <- data.frame(
+    Compartment = c(rep("A", length(meth_density_A)), rep("B", length(meth_density_B))),
+    Methylation_Density = c(meth_density_A, meth_density_B)
+)
+
+# Perform Welch's t-test
+t_test_result_meth <- t.test(Methylation_Density ~ Compartment, data = meth_data)
+
+# Determine significance label based on p-value
+significance_label_meth <- ifelse(t_test_result_meth$p.value < 0.0001, "****",
+                                ifelse(t_test_result_meth$p.value < 0.001, "***",
+                                       ifelse(t_test_result_meth$p.value < 0.01, "**",
+                                              ifelse(t_test_result_meth$p.value < 0.05, "*", "ns"))))
+
+# Print the t-test result
+print(t_test_result_meth)
+
+
+ggplot(meth_data, aes(x = Compartment, y = Methylation_Density, fill = Compartment)) +
+    geom_violin(trim = FALSE, alpha = 0.6, color = NA) +
+    geom_boxplot(outlier.shape = 16, outlier.colour = "red", width = 0.2, color = "black") +
+    labs(title = "Comparison of 5mC Methylation Density Between A and B Compartments",
+         y = "5mC Methylation Density (per 10kb)", x = "Compartment") +
+    theme_minimal(base_size = 15) +
+    annotate("text", x = 1.5, y = max(meth_data$Methylation_Density) * 1.05, 
+             label = significance_label_meth, size = 6, color = "black", fontface = "bold") +
+    annotate("text", x = 1.5, y = max(meth_data$Methylation_Density) * 1.1, 
+             label = paste0("p = ", formatC(t_test_result_meth$p.value, format = "e", digits = 2)), 
+             size = 5, color = "black", fontface = "italic") +
+    theme(axis.title = element_text(size = 14, face = "bold"),
+          axis.text = element_text(size = 12),
+          plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+          legend.position = "none") +
+    scale_fill_manual(values = c("A" = "#FF6347", "B" = "#4682B4"))
+
+
+
+
+
+
+
+
+#####
+
+## SNP Density Analysis for Compartments A and B
+
+# Load required library
+library(ggplot2)
+
+# Load SNP density data for compartments A and B
+compartment_A_SNP <- read.table("final_A_SNP_density.bedgraph", header = FALSE)
+compartment_B_SNP <- read.table("final_B_SNP_density.bedgraph", header = FALSE)
+
+# Extract SNP density (5th column)
+SNP_density_A <- compartment_A_SNP$V5
+SNP_density_B <- compartment_B_SNP$V5
+
+# Create a combined data frame
+SNP_data <- data.frame(
+    Compartment = c(rep("A", length(SNP_density_A)), rep("B", length(SNP_density_B))),
+    SNP_Density = c(SNP_density_A, SNP_density_B)
+)
+
+# Perform Welch's t-test
+t_test_result_SNP <- t.test(SNP_Density ~ Compartment, data = SNP_data)
+
+# Determine significance label based on p-value
+significance_label_SNP <- ifelse(t_test_result_SNP$p.value < 0.0001, "****",
+                                ifelse(t_test_result_SNP$p.value < 0.001, "***",
+                                       ifelse(t_test_result_SNP$p.value < 0.01, "**",
+                                              ifelse(t_test_result_SNP$p.value < 0.05, "*", "ns"))))
+
+# Print the t-test result
+print(t_test_result_SNP)
+
+
+ggplot(SNP_data, aes(x = Compartment, y = SNP_Density, fill = Compartment)) +
+    geom_violin(trim = FALSE, alpha = 0.6, color = NA) +
+    geom_boxplot(outlier.shape = 16, outlier.colour = "red", width = 0.2, color = "black") +
+    labs(title = "Comparison of SNP Density Between A and B Compartments",
+         y = "SNP Density (per 10kb)", x = "Compartment") +
+    theme_minimal(base_size = 15) +
+    annotate("text", x = 1.5, y = max(SNP_data$SNP_Density) * 1.05, 
+             label = significance_label_SNP, size = 6, color = "black", fontface = "bold") +
+    annotate("text", x = 1.5, y = max(SNP_data$SNP_Density) * 1.1, 
+             label = paste0("p = ", formatC(t_test_result_SNP$p.value, format = "e", digits = 2)), 
+             size = 5, color = "black", fontface = "italic") +
+    theme(axis.title = element_text(size = 14, face = "bold"),
+          axis.text = element_text(size = 12),
+          plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+          legend.position = "none") +
+    scale_fill_manual(values = c("A" = "#FF6347", "B" = "#4682B4"))
+
+
+
+
+
+
+
+####tRNA plotting
+
+
+# Read data
+A_tRNA <- read.table("final_A_tRNA_density.bedgraph", header = FALSE, sep = "", fill = TRUE)
+B_tRNA <- read.table("final_B_tRNA_density.bedgraph", header = FALSE, sep = "", fill = TRUE)
+
+# Assign column names
+colnames(A_tRNA) <- c("Scaffold", "Start", "End", "Density", "tRNA_Count")
+colnames(B_tRNA) <- c("Scaffold", "Start", "End", "Density", "tRNA_Count")
+
+# Add compartment labels
+A_tRNA$Compartment <- "A"
+B_tRNA$Compartment <- "B"
+
+# Combine datasets
+data <- rbind(A_tRNA, B_tRNA)
+
+# Wilcoxon test
+wilcox_test <- wilcox.test(tRNA_Count ~ Compartment, data = data)
+p_value <- wilcox_test$p.value  # Extract p-value
+
+# Calculate mean tRNA count per 10kb for each compartment
+mean_counts <- data %>%
+  group_by(Compartment) %>%
+  summarise(mean_tRNA = mean(tRNA_Count, na.rm = TRUE))
+
+# Print Wilcoxon test result
+print(wilcox_test)
+
+# Create jitter plot with mean and p-value
+ggplot(data, aes(x = Compartment, y = tRNA_Count, color = Compartment)) +
+  geom_jitter(width = 0.2, alpha = 0.6, size = 1.5) +  # Jitter points
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 2.5, fill = "black") +  # Mean points
+  annotate("text", x = 1.5, y = max(data$tRNA_Count, na.rm = TRUE) + 1,
+           label = paste("Wilcoxon p =", signif(p_value, digits = 3)), size = 4) +  # Add p-value
+  annotate("text", x = 1, y = max(data$tRNA_Count, na.rm = TRUE) + 2,
+           label = paste("Mean A =", round(mean_counts$mean_tRNA[mean_counts$Compartment == "A"], 3)), size = 4) +  # Mean for A
+  annotate("text", x = 2, y = max(data$tRNA_Count, na.rm = TRUE) + 2,
+           label = paste("Mean B =", round(mean_counts$mean_tRNA[mean_counts$Compartment == "B"], 3)), size = 4) +  # Mean for B
+  scale_color_manual(values = c("A" = "#FF6347", "B" = "#4682B4")) +  # Custom colors
+  labs(
+    title = "Comparison of tRNA Counts in A and B Compartments",
+    x = "Compartment",
+    y = "tRNA Count (per 10kb)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    legend.position = "none"
+  )
+
+
+
+
+
+###########
+
+
+
+
+##########effector_hmm_top10_plotting
+library(tidyverse)
+
+# Read data
+effector_domain_data <- read.table("all_effectors_curated_hmm_AB.bed", 
+                                   sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+
+# Assign column names
+colnames(effector_domain_data) <- c("Scaffold", "Start", "End", "Domain", "Compartment")
+
+# Calculate frequency of each domain in compartments A and B
+domain_frequencies <- effector_domain_data %>% 
+    group_by(Domain, Compartment) %>%
+    summarise(Frequency = n(), .groups = "drop")
+
+# Get total frequency of each domain
+top_10_domains <- domain_frequencies %>%
+    group_by(Domain) %>%
+    summarise(Total_Frequency = sum(Frequency)) %>%
+    top_n(10, Total_Frequency)
+
+# Filter for top 10 domains
+top_10_domain_frequencies <- domain_frequencies %>%
+    filter(Domain %in% top_10_domains$Domain)
+
+# Define compartment sizes (MB)
+compartment_sizes <- c(A = 41.12, B = 35.58)  # MB
+
+# Add density column
+top_10_domain_frequencies <- top_10_domain_frequencies %>%
+    mutate(Density_per_MB = Frequency / compartment_sizes[Compartment])
+
+# Pivot for saving
+number_table <- top_10_domain_frequencies %>%
+    pivot_wider(names_from = Compartment, values_from = Frequency, values_fill = 0) %>%
+    rename(Number_A = A, Number_B = B)
+
+density_table <- top_10_domain_frequencies %>%
+    pivot_wider(names_from = Compartment, values_from = Density_per_MB, values_fill = 0) %>%
+    rename(Density_A = A, Density_B = B)
+
+# Save tables
+write.table(number_table, "top10_domains_number_A_B.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(density_table, "top10_domains_density_A_B.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Bubble plot
+ggplot(top_10_domain_frequencies, aes(x = Domain, y = Density_per_MB, color = Compartment, size = Density_per_MB)) +
+    geom_point(alpha = 0.9) +
+    labs(title = "Top 10 Effector Domains - Density per MB in Compartments A and B",
+         x = "Effector Protein Domain",
+         y = "Density (Effectors per MB)") +
+    scale_color_manual(values = c("A" = "yellowgreen", "B" = "violet"), name = "Compartment") +
+    scale_size(range = c(3, 15), name = "Density per MB") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 14),  
+          axis.text.y = element_text(size = 12),  
+          axis.title.x = element_text(size = 14), 
+          axis.title.y = element_text(size = 14),
+          plot.title = element_text(size = 16, hjust = 0.5),
+          legend.key.size = unit(1.5, 'cm')) +  # Increase legend bubble size
+    coord_flip() + 
+    guides(color = guide_legend(override.aes = list(size = 6)))   # <<== LEGEND BUBBLE SIZE ADDED
+
+
+
+#######3 effector density comparisions
+
+# Load necessary libraries
+library(tidyverse)
+
+# Read the data
+effector_data <- read.table("all_effectors_curated_hmm_AB.bed", sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+colnames(effector_data) <- c("Scaffold", "Start", "End", "Domain", "Compartment")
+
+# Filter for RXLR, Crinkler, and NPP effectors
+filtered_effectors <- effector_data %>%
+    filter(Domain %in% c("RXLR", "Crinkler", "NPP"))
+
+# Calculate the length of each effector
+filtered_effectors <- filtered_effectors %>%
+    mutate(Length = End - Start + 1)
+
+# Calculate the number of effectors per compartment
+effector_counts <- filtered_effectors %>%
+    group_by(Compartment) %>%
+    summarise(Count = n())
+
+# Define compartment sizes in MB
+compartment_sizes <- data.frame(
+    Compartment = c("A", "B"),
+    Size_MB = c(41.12, 35.58)
+)
+
+# Merge effector counts with compartment sizes
+density_data <- effector_counts %>%
+    left_join(compartment_sizes, by = "Compartment") %>%
+    mutate(Density_per_MB = Count / Size_MB)
+
+# Create the bar plot with custom colors
+ggplot(density_data, aes(x = Compartment, y = Density_per_MB, fill = Compartment)) +
+    geom_bar(stat = "identity", color = "black") +
+    scale_fill_manual(values = c("A" = "yellowgreen", "B" = "violet")) +  # <<== Change colors here
+    labs(
+        title = "Density of RXLR, Crinkler, and NPP Effectors by Compartment",
+        x = "Compartment",
+        y = "Density (Effectors per MB)"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "none")
+
+
+##########density of all effector bar plot
+
+# Load necessary libraries
+library(tidyverse)
+
+# Read the data
+effector_data <- read.table("all_effectors_curated_hmm_AB.bed", sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+colnames(effector_data) <- c("Scaffold", "Start", "End", "Domain", "Compartment")
+
+# Calculate the number of effectors per compartment
+effector_counts <- effector_data %>%
+  group_by(Compartment) %>%
+  summarise(Count = n())
+
+# Define compartment sizes in MB
+compartment_sizes <- data.frame(
+  Compartment = c("A", "B"),
+  Size_MB = c(41.12, 35.58)  # Replace with actual sizes
+)
+
+# Merge effector counts with compartment sizes
+density_data <- effector_counts %>%
+  left_join(compartment_sizes, by = "Compartment") %>%
+  mutate(Density_per_MB = Count / Size_MB)
+
+# Create the bar plot with swapped colors
+ggplot(density_data, aes(x = Compartment, y = Density_per_MB, fill = Compartment)) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_fill_manual(values = c("A" = "yellowgreen", "B" = "violet")) +  # Swap colors here
+  labs(
+    title = "Density of All Effectors by Compartment",
+    x = "Compartment",
+    y = "Density (Effectors per MB)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+
+
+#########################chromosome wise plotting of 3 effectors
+
+library(tidyverse)
+
+# Input chromosome sizes
+chromosome_sizes <- data.frame(
+  Chromosome = paste0("HiC_scaffold_", 1:17),
+  Size = c(10035213, 6005774, 5204247, 4854107, 4578824, 4386091, 4370543, 4240137,
+           4207489, 4198913, 4050250, 4029041, 3987571, 3431876, 3272040, 3056082, 2703969)  # In base pairs
+) %>%
+  mutate(Chromosome = gsub("HiC_scaffold_", "Chromosome_", Chromosome))  # Update labeling
+
+# Read the effector domain data file
+effector_data <- read.table("all_effectors_and_gene_curated_hmm_AB.bed", 
+                            sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+
+# Assign column names
+colnames(effector_data) <- c("Chromosome", "Start", "End", "Domain", "Compartment")
+
+# Replace `HiC_scaffold_` with `Chromosome_` in the effector data
+effector_data <- effector_data %>%
+  mutate(Chromosome = gsub("HiC_scaffold_", "Chromosome_", Chromosome))
+
+# Filter for specific effectors (RXLR, Crinkler, NPP)
+specific_effectors <- c("RXLR", "Crinkler", "NPP")
+filtered_effectors <- effector_data %>%
+  filter(Domain %in% specific_effectors)
+
+# Ensure chromosomes are ordered numerically
+chromosome_sizes <- chromosome_sizes %>%
+  mutate(Chromosome = factor(Chromosome, levels = paste0("Chromosome_", 1:17)))
+
+
+
+
+# Add chromosome size information in MB
+chromosome_sizes_MB <- data.frame(
+    Chromosome = paste0("Chromosome_", 1:17),
+    Size_MB = c(10035213, 6005774, 5204247, 4854107, 4578824, 4386091, 
+                4370543, 4240137, 4207489, 4198913, 4050250, 4029041, 
+                3987571, 3431876, 3272040, 3056082, 2703969) / 1e6  # Sizes in MB
+)
+
+# Filter for RXLR, Crinkler, and NPP1 effectors and calculate density per 1 MB
+density_data_compartment <- filtered_effectors %>%
+    filter(Domain %in% c("RXLR", "Crinkler", "NPP")) %>%
+    group_by(Chromosome, Compartment, Domain) %>%
+    summarise(Count = n(), .groups = "drop") %>%
+    left_join(chromosome_sizes_MB, by = "Chromosome") %>%
+    mutate(Density_per_MB = Count / Size_MB)  # Density = count per 1 MB
+
+# Save data as .txt and .csv
+write.table(density_data_compartment, "effector_density_data.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.csv(density_data_compartment, "effector_density_data.csv", row.names = FALSE)
+
+# Convert Chromosome to a factor with numeric order
+density_data_compartment$Chromosome <- factor(density_data_compartment$Chromosome, 
+                                              levels = paste0("Chromosome_", 1:17), 
+                                              ordered = TRUE)
+
+# Create the stacked bar plot
+ggplot(density_data_compartment, aes(x = interaction(Chromosome, Compartment), 
+                                     y = Density_per_MB, fill = Domain)) +
+    geom_bar(stat = "identity", position = "stack") +
+    scale_fill_manual(values = c(
+        "RXLR" = "firebrick",
+        "Crinkler" = "steelblue",
+        "NPP" = "darkolivegreen3"
+    ),
+    labels = c("Crinkler", "NPP", "RXLR")) +
+    scale_x_discrete(labels = function(x) gsub("_", " ", x)) +  # Simplify x-axis labels
+    labs(title = "Density of RXLR, Crinkler, and NPP Effectors by Chromosome and Compartment",
+         x = "Chromosome (Compartment)",
+         y = "Density (Effectors per 1 MB)",
+         fill = "Effector Domain") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "bold",size = 10), 
+          plot.title = element_text(size = 16, hjust = 0.5)) 
+
+
+
+

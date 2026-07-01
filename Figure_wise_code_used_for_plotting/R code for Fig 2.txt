@@ -1,0 +1,541 @@
+###karyoplot
+
+
+#plot empty chromosome
+# Load required libraries
+library(karyoploteR)
+library(GenomicRanges)
+
+# Step 1: Load and Process Genome Data
+# -------------------------------------
+# Read genome data
+genome_data <- read.table("my_genome.txt", header = FALSE, stringsAsFactors = FALSE)
+
+# Convert to GRanges
+custom_genome_gr <- GRanges(
+    seqnames = genome_data$V1, 
+    ranges = IRanges(start = genome_data$V2, end = genome_data$V3)
+)
+
+# Add chromosome lengths to seqinfo
+seqinfo(custom_genome_gr) <- Seqinfo(
+    seqnames = genome_data$V1,
+    seqlengths = as.numeric(genome_data$V3)
+)
+
+# Step 2: Plot Chromosomes
+# -------------------------
+# Adjust plot parameters
+pp <- getDefaultPlotParams(plot.type = 1)
+pp$data1height <- 0.8  # Adjust height for the main data panel
+
+# Plot chromosomes
+kp <- plotKaryotype(genome = custom_genome_gr, plot.type = 1, plot.params = pp)
+
+# Step 3: Add Chromosome Size Scale (1Mb increments)
+# --------------------------------------------------
+# Loop through each chromosome to add the scale
+for (chr in unique(seqnames(custom_genome_gr))) {
+    chr_length <- seqlengths(custom_genome_gr)[chr]  # Get the chromosome length
+    
+    # Calculate tick positions and labels for 1Mb intervals
+    tick_positions <- seq(0, chr_length, by = 1000000)
+    tick_labels <- paste(seq(0, chr_length / 1000000, by = 1), "Mb", sep = "")  # Format as "0Mb", "1Mb", "2Mb", etc.
+    
+    # Plot the scale below the chromosome for each chromosome
+    for (i in 1:length(tick_positions)) {
+        kpText(kp, 
+               chr = chr, 
+               x = tick_positions[i], 
+               y = -0.05,  # Position the labels slightly below the chromosome
+               labels = tick_labels[i], 
+               cex = 0.4,   # Reduce the size of the labels
+               col = "black")
+    }
+}
+
+# Optional: Adjust the margins to ensure proper spacing
+kp$plot$params$track.margin <- c(0.1, 0.1)  # Adjust the space between the chromosome track and the scale
+
+
+
+
+
+
+
+
+
+
+#BUSCO_GENE
+
+# Read BUSCO gene data (replace with your actual file)
+busco_genes <- read.table("Phytophthora_capsici_WB2_BUSCO_gene.bed", 
+                          header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+colnames(busco_genes) <- c("V1", "V2", "V3")
+
+# Convert to GRanges
+busco_genes_gr <- GRanges(
+    seqnames = busco_genes$V1,
+    ranges = IRanges(start = busco_genes$V2, end = busco_genes$V3),
+    strand = "*"
+)
+
+# Add a custom y position for BUSCO genes to position them below the chromosomes
+busco_genes_gr$y <- 8  # Position below rRNA but above chromosomes
+
+# Plot BUSCO genes as red stars
+kpPoints(kp, 
+         data = busco_genes_gr, 
+         pch = 8,   # Plot as stars
+         col = "blue", 
+         cex = 0.7,  # Size of stars
+         y = busco_genes_gr$y)  # Custom y-axis position
+
+
+
+
+
+
+
+#rRNA
+
+# Prepare rRNA data
+rRNA_data <- data.frame(
+    V1 = c("HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", 
+           "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_3", 
+           "HiC_scaffold_3", "HiC_scaffold_3", "HiC_scaffold_4"),
+    V2 = c(4035392, 4036847, 4036851, 4046876, 4049296, 4052473, 4059815, 4369525, 4371280, 4375365, 4375696, 4383707, 
+           4543771, 4553967, 892298),
+    V3 = c(4036673, 4040342, 4037003, 4047656, 4049410, 4053037, 4060436, 4369639, 4375521, 4375517, 4376978, 4384271, 
+           4545596, 4557257, 893718)
+)
+
+# Convert to GRanges
+rRNA_gr <- GRanges(
+    seqnames = rRNA_data$V1,
+    ranges = IRanges(start = rRNA_data$V2, end = rRNA_data$V3)
+)
+
+# Add custom y position for rRNA genes
+rRNA_gr$y <- 8  # Position above chromosomes
+
+# Plot rRNA data as blue points
+kpPoints(kp, 
+         data = rRNA_gr, 
+         pch = 11,   # Blue points
+         col = "green", 
+         cex = 0.9,  # Size of points
+         y = rRNA_gr$y)  # Custom y-axis position
+
+#gene density
+
+
+# Load required libraries
+library(karyoploteR)
+library(GenomicRanges)
+
+# Step 2: Load and Process Gene Data
+# ----------------------------------
+# Read gene data
+gene_data <- read.table("Gene_position.bed", 
+                        header = FALSE, stringsAsFactors = FALSE)
+
+# Rename columns for clarity
+colnames(gene_data) <- c("chr", "start", "end")
+
+# Convert gene data to GRanges
+gene_gr <- GRanges(
+    seqnames = gene_data$chr,
+    ranges = IRanges(start = gene_data$start, end = gene_data$end)
+)
+
+# Step 3: Create 20 kb Bins
+# --------------------------
+# Define bin size (20 kb)
+bin_size <- 20000
+
+# Create 20 kb bins across the genome (using the seqnames from the genome data)
+bins <- tileGenome(seqlengths = seqlengths(custom_genome_gr), tilewidth = bin_size, cut.last.tile.in.chrom = TRUE)
+
+# Count genes in each bin
+bin_counts <- countOverlaps(bins, gene_gr)
+
+# Add the counts as metadata to the bins
+bins$gene_count <- bin_counts
+
+# Step 4: Plot Gene Density with Custom y Position
+# ------------------------------------------------
+# Set plot parameters for the karyotype
+#pp <- getDefaultPlotParams(plot.type = 1)
+#pp$data1height <- 0.8  # Adjust height for the main data panel
+
+# Plot the chromosomes
+# kp <- plotKaryotype(genome = custom_genome_gr, plot.type = 1, plot.params = pp)
+
+# Plot the gene density bars with custom y position for the density plot
+kpBars(kp, 
+       data = bins, 
+       y1 = bins$gene_count,  # Gene count data (height of bars)
+       col = "red",           # Color for the bars
+       border = NA,           # No border around bars
+       r0 = -86,              # Custom y position for the gene density bars
+       r1 = -83)              # Adjusted y position for the height of bars
+
+
+
+
+
+
+#repeat density
+
+# Step 1: Load Repeat Data
+# -------------------------
+# Read repeat data (replace with your actual repeat data file)
+repeat_data <- read.table("Repeat_positions.bed", 
+                          header = FALSE, stringsAsFactors = FALSE)
+
+# Rename columns for clarity
+colnames(repeat_data) <- c("chr", "start", "end")
+
+# Convert repeat data to GRanges
+repeat_gr <- GRanges(
+    seqnames = repeat_data$chr,
+    ranges = IRanges(start = repeat_data$start, end = repeat_data$end)
+)
+
+# Step 2: Create 20 kb Bins
+# --------------------------
+# Define bin size (20 kb)
+bin_size <- 20000
+
+# Create 20 kb bins across the genome (using the seqnames from the genome data)
+bins <- tileGenome(seqlengths = seqlengths(custom_genome_gr), tilewidth = bin_size, cut.last.tile.in.chrom = TRUE)
+
+# Count repeats in each bin
+bin_counts_repeats <- countOverlaps(bins, repeat_gr)
+
+# Add the counts as metadata to the bins
+bins$repeat_count <- bin_counts_repeats
+
+# Step 3: Plot Repeat Density with Custom y Position
+# ------------------------------------------------
+# Set plot parameters for the karyotype
+#pp <- getDefaultPlotParams(plot.type = 1)
+#pp$data1height <- 0.8  # Adjust height for the main data panel
+
+# Plot the chromosomes
+#kp <- plotKaryotype(genome = custom_genome_gr, plot.type = 1, plot.params = pp)
+
+# Plot the repeat density bars with custom y position for the repeat density plot
+kpBars(kp, 
+       data = bins, 
+       y1 = bins$repeat_count,  # Repeat count data (height of bars)
+       col = "cyan",            # Color for the repeat bars
+       border = NA,             # No border around bars
+       r0 = -27,                # Custom y position for the repeat density bars (you can adjust this)
+       r1 = -28)                # Adjusted y position for the height of bars (you can adjust this)
+
+
+#tRNA
+# Load required libraries
+library(karyoploteR)
+library(GenomicRanges)
+
+# Step 1: Read tRNA Data
+tRNA_data <- read.table("P.capsici_tRNA.bed", header = FALSE, stringsAsFactors = FALSE)
+colnames(tRNA_data) <- c("chr", "start", "end")
+
+# Convert tRNA data to GRanges
+tRNA_gr <- GRanges(
+    seqnames = tRNA_data$chr,
+    ranges = IRanges(start = tRNA_data$start, end = tRNA_data$end),
+    strand = "*"
+)
+
+# Step 2: Add Custom y Position for tRNA
+tRNA_gr$y <- -1  # Position above BUSCO genes
+
+# Step 3: Plot tRNA Positions
+kpPoints(kp, 
+         data = tRNA_gr, 
+         pch = 6,   # Use triangle symbols for tRNA
+         col = "purple", 
+         cex = 0.75,  # Adjust size of triangles
+         y = tRNA_gr$y)  # Custom y-axis position for tRNA
+
+
+
+
+
+#RXLR Plotting
+
+
+
+
+# Step 1: Read RXLR gene data
+rxlr_data <- read.table("RXLR.bed", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+colnames(rxlr_data) <- c("chr", "start", "end", "rxlr_name")
+
+# Step 2: Correct start and end positions
+rxlr_data$start <- pmin(rxlr_data$start, rxlr_data$end)
+rxlr_data$end <- pmax(rxlr_data$start, rxlr_data$end)
+
+# Step 3: Convert to GRanges object
+rxlr_gr <- GRanges(
+    seqnames = rxlr_data$chr,
+    ranges = IRanges(start = rxlr_data$start, end = rxlr_data$end),
+    rxlr_name = rxlr_data$rxlr_name
+)
+
+# Step 4: Assign custom y position for RXLR genes
+rxlr_gr$y <- -15  # Position RXLR genes below the other features (adjust as needed)
+
+# Step 5: Plot RXLR genes on the karyotype
+kpPoints(kp, 
+         data = rxlr_gr, 
+         pch = 16,         
+         col = "magenta", # Color for RXLR genes
+         cex = 0.8,       # Adjust the size of triangles
+         y = rxlr_gr$y)   # Custom y-axis position
+
+
+
+#for crinckler plotting
+# Step 1: Read Crinkler gene data
+crinkler_data <- read.table("Crinkler.bed", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+colnames(crinkler_data) <- c("chr", "start", "end", "crinkler_name")
+
+# Step 2: Correct start and end positions
+crinkler_data$start <- pmin(crinkler_data$start, crinkler_data$end)
+crinkler_data$end <- pmax(crinkler_data$start, crinkler_data$end)
+
+# Step 3: Convert to GRanges object
+crinkler_gr <- GRanges(
+    seqnames = crinkler_data$chr,
+    ranges = IRanges(start = crinkler_data$start, end = crinkler_data$end),
+    crinkler_name = crinkler_data$crinkler_name
+)
+
+
+# Step 4: Assign a custom y position for Crinkler genes
+crinkler_gr$y <- -15  # Position Crinkler genes below other annotations
+
+# Step 5: Plot Crinkler genes
+kpPoints(kp, 
+         data = crinkler_gr, 
+         pch = 16,         # Downward-pointing triangle
+         col = "brown",  # Use an orange color for Crinkler genes
+         cex = 0.8,       # Adjust symbol size
+         y = crinkler_gr$y)  # Custom y-axis position
+
+#NPP plotting
+# Step 1: Read NPP gene data
+npp_data <- read.table("NPP.bed", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+colnames(npp_data) <- c("chr", "start", "end", "npp_name")
+
+# Step 2: Correct start and end positions
+npp_data$start <- pmin(npp_data$start, npp_data$end)
+npp_data$end <- pmax(npp_data$start, npp_data$end)
+
+# Step 3: Convert to GRanges object
+npp_gr <- GRanges(
+    seqnames = npp_data$chr,
+    ranges = IRanges(start = npp_data$start, end = npp_data$end),
+    npp_name = npp_data$npp_name
+)
+
+# Step 4: Assign a custom y position for NPP genes
+npp_gr$y <- -15  # Position NPP genes below other annotations
+
+# Step 5: Plot NPP genes
+kpPoints(kp, 
+         data = npp_gr, 
+         pch = 16,         # X symbol
+         col = "darkgreen",  # Use a purple color for NPP genes
+         cex = 0.8,       # Adjust symbol size
+         y = npp_gr$y)    # Custom y-axis position
+
+
+
+###################figure 2d
+
+library(data.table)
+library(ggplot2)
+
+################
+# READ FILES
+##########
+
+copia <- fread(
+    "Copia_density_percent_10kb.bed",
+    col.names = c("chr","start","end","density")
+)
+
+cent <- fread(
+    "centromeric_position.txt",
+    col.names = c("chr","start","end")
+)
+
+
+# DEFINE BIN MIDPOINTS
+############
+copia[, midpoint := (start + end)/2]
+
+
+# CLASSIFY BINS
+###################
+
+copia[, region := "Non-centromeric"]
+
+for(i in 1:nrow(cent)) {
+
+    copia[
+        chr == cent$chr[i] &
+        midpoint >= cent$start[i] &
+        midpoint <= cent$end[i],
+        region := "Centromeric"
+    ]
+}
+
+##############################
+# CHECK BIN COUNTS
+####################
+table(copia$region)
+
+
+# SUMMARY STATISTICS
+#############################
+summary_stats <- copia[
+    ,
+    .(
+        N = .N,
+        Mean = mean(density),
+        Median = median(density),
+        SD = sd(density),
+        Max = max(density)
+    ),
+    by = region
+]
+
+print(summary_stats)
+
+
+# WILCOXON RANK-SUM TEST
+#############################
+
+wilcox_result <- wilcox.test(
+    density ~ region,
+    data = copia,
+    alternative = "two.sided"
+)
+
+print(wilcox_result)
+
+
+# FOLD ENRICHMENT
+######
+
+cent_median <- median(
+    copia[region == "Centromeric"]$density
+)
+
+noncent_median <- median(
+    copia[region == "Non-centromeric"]$density
+)
+
+fold_change <- cent_median / noncent_median
+
+cat("\nMedian fold enrichment =", fold_change, "\n")
+
+
+# LOG TRANSFORM FOR PLOTTING
+###############################
+
+copia[, log_density := log10(density + 1)]
+
+
+# PLOT
+##########################
+
+library(ggplot2)
+library(ggpubr)
+
+# log10(x+1)
+copia[, log_density := log10(density + 1)]
+
+p <- ggplot(
+    copia,
+    aes(
+        x = region,
+        y = log_density,
+        fill = region
+    )
+) +
+
+    geom_violin(
+        trim = FALSE,
+        alpha = 0.6,
+        linewidth = 0.5
+    ) +
+
+    stat_summary(
+        fun = mean,
+        geom = "point",
+        shape = 22,
+        size = 5,
+        fill = "white",
+        color = "black",
+        stroke = 1.2
+    ) +
+
+    scale_fill_manual(
+        values = c(
+            "Centromeric" = "#D55E00",
+            "Non-centromeric" = "#0072B2"
+        )
+    ) +
+
+    stat_compare_means(
+        method = "wilcox.test",
+        label = "p.signif",
+        size = 6
+    ) +
+
+    stat_compare_means(
+        method = "wilcox.test",
+        label = "p.format",
+        size = 5,
+        vjust = 2
+    ) +
+
+    labs(
+        x = "",
+        y = expression(log[10]("Copia density (%)" + 1)),
+        title = "Genome-wide Copia density",
+        subtitle = "All 10-kb bins"
+    ) +
+
+    theme_bw(base_size = 15) +
+
+    theme(
+        legend.position = "none",
+
+        plot.title = element_text(
+            face = "bold",
+            hjust = 0.5
+        ),
+
+        plot.subtitle = element_text(
+            hjust = 0.5
+        ),
+
+        axis.text.x = element_text(
+            face = "bold",
+            size = 13
+        )
+    )
+
+print(p)
+
+
+

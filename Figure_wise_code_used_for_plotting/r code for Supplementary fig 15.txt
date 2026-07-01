@@ -1,0 +1,352 @@
+
+
+############code for TAD boundary distance reltionship in A ,B and A-B comaprtment's TAD boundaries############
+
+
+# 
+library(GenomicRanges)
+library(rtracklayer)
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+
+#  Load TPM-normalized 
+expr <- read.csv("TPM_normalized_counts_all_mean.csv", row.names = 1)
+colnames(expr) <- c("TPM_trimed_0h", "TPM_trimed_16h", "TPM_trimed_48h", "TPM_control", "TPM_Early", "TPM_Late")
+
+# 
+gtf <- import("Phytophthora_capsici_WB2_name_parse_gene_name_updated_fixed_Hic.gtf")
+exons <- gtf[gtf$type == "exon"]
+
+# Get gene coordinates
+gene_coords <- as.data.frame(exons) %>%
+  group_by(gene_id) %>%
+  summarise(
+    seqnames = unique(seqnames),
+    start = min(start),
+    end = max(end),
+    .groups = "drop"
+  )
+
+genes_gr <- GRanges(
+  seqnames = gene_coords$seqnames,
+  ranges = IRanges(start = gene_coords$start, end = gene_coords$end),
+  gene_id = gene_coords$gene_id
+)
+
+#Load and filter A compartment boundaries
+boundary_data <- read.table("boundary_compartment_id_insulation_score.bed", header = FALSE, sep = "\t")
+colnames(boundary_data) <- c("chr", "start", "end", "compartment", "id", "chr2", "start2", "end2", "score")
+boundary_A <- boundary_data %>% filter(compartment == "A")
+
+boundary_gr_A <- GRanges(
+  seqnames = boundary_A$chr,
+  ranges = IRanges(start = boundary_A$start, end = boundary_A$end)
+)
+
+# Calculate distance to nearest A boundary
+gene_distances <- distanceToNearest(genes_gr, boundary_gr_A)
+gene_distance_df <- data.frame(
+  gene_id = genes_gr$gene_id[queryHits(gene_distances)],
+  distance = mcols(gene_distances)$distance
+)
+
+# Plotting function with "0 (Boundary)" and new binning
+plot_expr_distance <- function(condition, label) {
+  expr_df <- expr %>%
+    mutate(
+      log2_TPM = log2(!!sym(condition) + 1),
+      gene_id = rownames(.)
+    )
+
+  merged_df <- left_join(expr_df, gene_distance_df, by = "gene_id") %>%
+    filter(!is.na(distance))
+
+  merged_df$distance_group <- cut(
+    merged_df$distance,
+    breaks = c(-1, 1, 10000, 20000, 30000, 40000, Inf),
+    labels = c("0 (Boundary)", "<10kb", "10-20kb", "20-30kb", "30-40kb", ">40kb")
+  )
+
+  # Filter only present groups
+  present_groups <- levels(droplevels(merged_df$distance_group))
+  all_comparisons <- list(
+    c("0 (Boundary)", "<10kb"),
+    c("0 (Boundary)", "10-20kb"),
+    c("0 (Boundary)", "20-30kb"),
+    c("0 (Boundary)", "30-40kb"),
+    c("0 (Boundary)", ">40kb")
+  )
+  valid_comparisons <- Filter(function(comp) all(comp %in% present_groups), all_comparisons)
+
+  # Plot
+  p <- ggplot(merged_df, aes(x = distance_group, y = log2_TPM, fill = distance_group)) +
+    geom_boxplot(outlier.shape = 21, outlier.size = 1.2, alpha = 0.9) +
+    stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+    stat_compare_means(method = "wilcox.test", comparisons = valid_comparisons, 
+                       method.args = list(alternative = "greater"), label = "p.signif") +
+    labs(
+      title = label,
+      x = "Distance to Nearest A Compartment Boundary",
+      y = "log2(TPM + 1)"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+      axis.text.x = element_text(angle = 30, hjust = 1),
+      legend.position = "none"
+    )
+  return(p)
+}
+
+#  all 6 samples
+p1 <- plot_expr_distance("TPM_trimed_0h", "Trimed 0h")
+p2 <- plot_expr_distance("TPM_trimed_16h", "Trimed 16h")
+p3 <- plot_expr_distance("TPM_trimed_48h", "Trimed 48h")
+p4 <- plot_expr_distance("TPM_control", "Control")
+p5 <- plot_expr_distance("TPM_Early", "Early")
+p6 <- plot_expr_distance("TPM_Late", "Late")
+
+#
+combined_plot <- p1 + p2 + p3 + p4 + p5 + p6 + plot_layout(ncol = 6)
+
+#  final plot
+print(combined_plot)
+
+
+
+
+
+
+
+
+
+#################################################################for B comaprtemnt TAD boundaries##########################
+#
+library(GenomicRanges)
+library(rtracklayer)
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+
+#  Load TPM-normalized 
+expr <- read.csv("TPM_normalized_counts_all_mean.csv", row.names = 1)
+colnames(expr) <- c("TPM_trimed_0h", "TPM_trimed_16h", "TPM_trimed_48h", "TPM_control", "TPM_Early", "TPM_Late")
+
+#  Load gene annotation
+gtf <- import("Phytophthora_capsici_WB2_name_parse_gene_name_updated_fixed_Hic.gtf")
+exons <- gtf[gtf$type == "exon"]
+
+# 📍 Get gene coordinates
+gene_coords <- as.data.frame(exons) %>%
+  group_by(gene_id) %>%
+  summarise(
+    seqnames = unique(seqnames),
+    start = min(start),
+    end = max(end),
+    .groups = "drop"
+  )
+
+genes_gr <- GRanges(
+  seqnames = gene_coords$seqnames,
+  ranges = IRanges(start = gene_coords$start, end = gene_coords$end),
+  gene_id = gene_coords$gene_id
+)
+
+#  Load and filter B compartment boundaries
+boundary_data <- read.table("boundary_compartment_id_insulation_score.bed", header = FALSE, sep = "\t")
+colnames(boundary_data) <- c("chr", "start", "end", "compartment", "id", "chr2", "start2", "end2", "score")
+boundary_B <- boundary_data %>% filter(compartment == "B")
+
+boundary_gr_B <- GRanges(
+  seqnames = boundary_B$chr,
+  ranges = IRanges(start = boundary_B$start, end = boundary_B$end)
+)
+
+#  Calculate distance to nearest B boundary
+gene_distances <- distanceToNearest(genes_gr, boundary_gr_B)
+gene_distance_df <- data.frame(
+  gene_id = genes_gr$gene_id[queryHits(gene_distances)],
+  distance = mcols(gene_distances)$distance
+)
+
+#  Plotting function with "0 (Boundary)" and new binning
+plot_expr_distance <- function(condition, label) {
+  expr_df <- expr %>%
+    mutate(
+      log2_TPM = log2(!!sym(condition) + 1),
+      gene_id = rownames(.)
+    )
+
+  merged_df <- left_join(expr_df, gene_distance_df, by = "gene_id") %>%
+    filter(!is.na(distance))
+
+  merged_df$distance_group <- cut(
+    merged_df$distance,
+    breaks = c(-1, 1, 10000, 20000, 30000, 40000, Inf),
+    labels = c("0 (Boundary)", "<10kb", "10-20kb", "20-30kb", "30-40kb", ">40kb")
+  )
+
+  present_groups <- levels(droplevels(merged_df$distance_group))
+  all_comparisons <- list(
+    c("0 (Boundary)", "<10kb"),
+    c("0 (Boundary)", "10-20kb"),
+    c("0 (Boundary)", "20-30kb"),
+    c("0 (Boundary)", "30-40kb"),
+    c("0 (Boundary)", ">40kb")
+  )
+  valid_comparisons <- Filter(function(comp) all(comp %in% present_groups), all_comparisons)
+
+  p <- ggplot(merged_df, aes(x = distance_group, y = log2_TPM, fill = distance_group)) +
+    geom_boxplot(outlier.shape = 21, outlier.size = 1.2, alpha = 0.9) +
+    stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+    stat_compare_means(method = "wilcox.test", comparisons = valid_comparisons, 
+                       method.args = list(alternative = "greater"), label = "p.signif") +
+    labs(
+      title = label,
+      x = "Distance to Nearest B Compartment Boundary",
+      y = "log2(TPM + 1)"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+      axis.text.x = element_text(angle = 30, hjust = 1),
+      legend.position = "none"
+    )
+  return(p)
+}
+
+# Generate plots for all 6 samples
+p1 <- plot_expr_distance("TPM_trimed_0h", "Trimed 0h")
+p2 <- plot_expr_distance("TPM_trimed_16h", "Trimed 16h")
+p3 <- plot_expr_distance("TPM_trimed_48h", "Trimed 48h")
+p4 <- plot_expr_distance("TPM_control", "Control")
+p5 <- plot_expr_distance("TPM_Early", "Early")
+p6 <- plot_expr_distance("TPM_Late", "Late")
+
+# Combine plots into a grid
+combined_plot <- p1 + p2 + p3 + p4 + p5 + p6 + plot_layout(ncol = 6)
+
+# Show final plot
+print(combined_plot)
+
+
+
+
+
+
+
+
+
+#################################################################for A-B comaprtemnt TAD boundaries##########################
+#  Load required libraries
+library(GenomicRanges)
+library(rtracklayer)
+library(tidyverse)
+library(ggpubr)
+library(patchwork)
+
+# Load TPM-normalized expression data
+expr <- read.csv("TPM_normalized_counts_all_mean.csv", row.names = 1)
+colnames(expr) <- c("TPM_trimed_0h", "TPM_trimed_16h", "TPM_trimed_48h", "TPM_control", "TPM_Early", "TPM_Late")
+
+# Load gene annotation
+gtf <- import("Phytophthora_capsici_WB2_name_parse_gene_name_updated_fixed_Hic.gtf")
+exons <- gtf[gtf$type == "exon"]
+
+# 📍 Get gene coordinates
+gene_coords <- as.data.frame(exons) %>%
+  group_by(gene_id) %>%
+  summarise(
+    seqnames = unique(seqnames),
+    start = min(start),
+    end = max(end),
+    .groups = "drop"
+  )
+
+genes_gr <- GRanges(
+  seqnames = gene_coords$seqnames,
+  ranges = IRanges(start = gene_coords$start, end = gene_coords$end),
+  gene_id = gene_coords$gene_id
+)
+
+#Load and filter A-B compartment boundaries
+boundary_data <- read.table("boundary_compartment_id_insulation_score.bed", header = FALSE, sep = "\t")
+colnames(boundary_data) <- c("chr", "start", "end", "compartment", "id", "chr2", "start2", "end2", "score")
+boundary_AB <- boundary_data %>% filter(compartment == "A-B")
+
+boundary_gr_AB <- GRanges(
+  seqnames = boundary_AB$chr,
+  ranges = IRanges(start = boundary_AB$start, end = boundary_AB$end)
+)
+
+# Calculate distance to nearest A-B boundary
+gene_distances <- distanceToNearest(genes_gr, boundary_gr_AB)
+gene_distance_df <- data.frame(
+  gene_id = genes_gr$gene_id[queryHits(gene_distances)],
+  distance = mcols(gene_distances)$distance
+)
+
+# Plotting function with "0 (Boundary)" and new binning
+plot_expr_distance <- function(condition, label) {
+  expr_df <- expr %>%
+    mutate(
+      log2_TPM = log2(!!sym(condition) + 1),
+      gene_id = rownames(.)
+    )
+
+  merged_df <- left_join(expr_df, gene_distance_df, by = "gene_id") %>%
+    filter(!is.na(distance))
+
+  merged_df$distance_group <- cut(
+    merged_df$distance,
+    breaks = c(-1, 1, 10000, 20000, 30000, 40000, Inf),
+    labels = c("0 (Boundary)", "<10kb", "10-20kb", "20-30kb", "30-40kb", ">40kb")
+  )
+
+  present_groups <- levels(droplevels(merged_df$distance_group))
+  all_comparisons <- list(
+    c("0 (Boundary)", "<10kb"),
+    c("0 (Boundary)", "10-20kb"),
+    c("0 (Boundary)", "20-30kb"),
+    c("0 (Boundary)", "30-40kb"),
+    c("0 (Boundary)", ">40kb")
+  )
+  valid_comparisons <- Filter(function(comp) all(comp %in% present_groups), all_comparisons)
+
+  p <- ggplot(merged_df, aes(x = distance_group, y = log2_TPM, fill = distance_group)) +
+    geom_boxplot(outlier.shape = 21, outlier.size = 1.2, alpha = 0.9) +
+    stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+    stat_compare_means(method = "wilcox.test", comparisons = valid_comparisons, 
+                       method.args = list(alternative = "greater"), label = "p.signif") +
+    labs(
+      title = label,
+      x = "Distance to Nearest A-B Compartment Boundary",
+      y = "log2(TPM + 1)"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+      axis.text.x = element_text(angle = 30, hjust = 1),
+      legend.position = "none"
+    )
+  return(p)
+}
+
+# Generate plots for all 6 samples
+p1 <- plot_expr_distance("TPM_trimed_0h", "Trimed 0h")
+p2 <- plot_expr_distance("TPM_trimed_16h", "Trimed 16h")
+p3 <- plot_expr_distance("TPM_trimed_48h", "Trimed 48h")
+p4 <- plot_expr_distance("TPM_control", "Control")
+p5 <- plot_expr_distance("TPM_Early", "Early")
+p6 <- plot_expr_distance("TPM_Late", "Late")
+
+#  Combine plots into a grid
+combined_plot <- p1 + p2 + p3 + p4 + p5 + p6 + plot_layout(ncol = 6)
+
+# Show final plot
+print(combined_plot)
+
+
+
+
