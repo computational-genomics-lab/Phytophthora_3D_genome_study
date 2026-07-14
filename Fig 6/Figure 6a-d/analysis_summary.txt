@@ -1,0 +1,27 @@
+=== TPM log2(TPM+1) Comparison Summary ===
+> print(summary_table)
+# A tibble: 6 × 5
+  Condition       A     B  p_value significance
+  <chr>       <dbl> <dbl>    <dbl> <chr>       
+1 TPM_0h       3.07  2.82 4.26e-13 ****        
+2 TPM_16h      2.60  2.39 6.92e- 9 ****        
+3 TPM_48h      2.86  2.62 2.65e-11 ****        
+4 TPM_Early    3.08  2.83 2.99e-13 ****        
+5 TPM_Late     3.22  2.98 5.38e-12 ****        
+6 TPM_control_96h  3.24  3.01 3.39e-11 **** 
+
+
+
+DEG_AB_secreted_non_secreted_all_comparisions
+
+Condition	Total_DEGs	DEG_in_A	DEG_in_B	Secreted_in_A	NonSecreted_in_A	Secreted_in_B	NonSecreted_in_B	Up_in_A	Down_in_A	Up_in_B	Down_in_B	Up_Secreted_in_A	Down_Secreted_in_A	Up_NonSecreted_in_A	Down_NonSecreted_in_A	Up_Secreted_in_B	Down_Secreted_in_B	Up_NonSecreted_in_B	Down_NonSecreted_in_B
+Early_vs_Myc_4d	1029	699	330	105	594	60	270	514	185	225	105	89	16	425	169	49	11	176	94
+Germ_vs_Zoo	10861	7122	3739	761	6361	497	3242	3065	4057	1664	2075	255	506	2810	3551	188	309	1476	1766
+Late_vs_Early	2729	1843	886	193	1650	115	771	876	967	456	430	97	96	779	871	52	63	404	367
+Late_vs_Myc_4d	2823	1915	908	224	1691	110	798	1123	792	547	361	167	57	956	735	73	37	474	324
+Myc_4d_vs_Myc_48h	10677	6967	3710	733	6234	467	3243	3652	3315	2000	1710	393	340	3259	2975	239	228	1761	1482
+Myc_vs_Germ	7164	4744	2420	438	4306	242	2178	2529	2215	1264	1156	275	163	2254	2052	151	91	1113	1065
+
+
+
+
