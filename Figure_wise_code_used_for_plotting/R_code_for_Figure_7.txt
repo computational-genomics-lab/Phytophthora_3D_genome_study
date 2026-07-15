@@ -435,7 +435,7 @@ ggplot(genes_long, aes(x = region_type, y = log2TPM, fill = region_type)) +
 
 
 
-###########Figure 7i
+###########Figure 7j
 ###########gene expression of boundary and its adjacent regions #######################
 
 # 📦 Load required libraries
