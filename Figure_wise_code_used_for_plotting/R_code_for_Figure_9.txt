@@ -1,0 +1,261 @@
+#####Figure 9f 
+###########motif cooccurance in anchor sequences###########
+
+library(tidyverse)
+library(pheatmap)
+library(igraph)
+library(ggraph)
+
+# Load the annotated FIMO data
+fimo_data <- read_tsv("anchor_sequence_fimo_motif_family.tsv")
+
+# Create unique anchor identifier
+fimo_data <- fimo_data %>%
+  mutate(anchor = paste(chromosome, start, end, sep = "_"))
+
+# Build motif presence/absence matrix
+motif_matrix <- fimo_data %>%
+  distinct(anchor, motif_id) %>%
+  mutate(present = 1) %>%
+  pivot_wider(names_from = motif_id, values_from = present, values_fill = 0)
+
+# Convert to matrix
+motif_mat <- as.matrix(motif_matrix[,-1])
+rownames(motif_mat) <- motif_matrix$anchor
+
+# Co-occurrence count matrix
+cooccur_count <- t(motif_mat) %*% motif_mat
+
+# Optional: Jaccard index matrix
+motif_totals <- diag(cooccur_count)
+jaccard_matrix <- cooccur_count / (outer(motif_totals, motif_totals, FUN = function(x, y) x + y - cooccur_count))
+
+# Plot co-occurrence count heatmap
+pheatmap(cooccur_count, 
+         cluster_rows = TRUE, 
+         cluster_cols = TRUE,
+         display_numbers = TRUE,
+         main = "Motif Co-occurrence Count")
+
+
+
+
+
+
+########Figure 9g
+########gene density in loop anchors and whole genome#########
+
+
+
+# Load required libraries
+library(tidyverse)
+library(ggpubr)
+
+# Read loop anchor gene density
+anchors <- read_tsv("anchor_5kb_bins_with_gene_counts.bed", 
+                    col_names = c("chr", "start", "end", "gene_count")) %>%
+  mutate(region = "Loop_Anchor")
+
+# Read whole genome gene density
+genome <- read_tsv("genome_5kb_gene_counts.bed", 
+                   col_names = c("chr", "start", "end", "gene_count")) %>%
+  mutate(region = "Whole_Genome")
+
+# Combine data
+combined <- bind_rows(anchors, genome)
+combined$region <- factor(combined$region, levels = c("Whole_Genome", "Loop_Anchor"))
+
+# Calculate mean gene density per region
+mean_values <- combined %>%
+  group_by(region) %>%
+  summarise(mean_gene_count = mean(gene_count))
+
+cat("Mean Gene Count per 5kb bin:\n")
+print(mean_values)
+
+# Wilcoxon test
+wilcox_result <- wilcox.test(gene_count ~ region, data = combined)
+p_value <- wilcox_result$p.value
+
+# Assign significance label
+significance_label <- case_when(
+  p_value <= 0.0001 ~ "****",
+  p_value <= 0.001 ~ "***",
+  p_value <= 0.01 ~ "**",
+  p_value <= 0.05 ~ "*",
+  TRUE ~ "ns"
+)
+
+cat("\nWilcoxon Test p-value:\n")
+print(p_value)
+cat("Significance:", significance_label, "\n")
+
+# Plot gene density comparison
+ggplot(combined, aes(x = region, y = gene_count, fill = region)) +
+  geom_boxplot(outlier.shape = 16, outlier.colour = "red", width = 0.6, color = "black") +
+  labs(
+    title = "Gene Density per 5kb Bin: Loop Anchors vs Whole Genome",
+    y = "Gene Count per 5kb Bin",
+    x = ""
+  ) +
+  theme_minimal(base_size = 15) +
+  annotate("text", x = 1.5, y = max(combined$gene_count) * 1.05,
+           label = significance_label, size = 6, color = "black", fontface = "bold") +
+  theme(
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.position = "none"
+  ) +
+  scale_fill_manual(values = c("Whole_Genome" = "#8da0cb", "Loop_Anchor" = "#fc8d62"))
+
+
+
+#####Figure 9h-i
+############Anchor Gene Expression Analysis (TPM)##########
+
+
+# === 1. Load Libraries ===
+library(tidyverse)
+library(ggpubr)
+
+# === 2. Load Data ===
+expr <- read.csv("TPM_normalized_counts_all_mean.csv", row.names = 1)
+anchor_genes <- readLines("anchor_gene_list_present_in_any_DEG_n=865.txt")
+
+# === 3. Filter and Format Expression Data ===
+expr_filtered <- expr[rownames(expr) %in% anchor_genes, ]
+
+expr_long <- expr_filtered %>%
+  rownames_to_column("gene_id") %>%
+  pivot_longer(cols = -gene_id, names_to = "Stage", values_to = "TPM") %>%
+  mutate(
+    Stage = Stage %>%
+      str_replace("TPM_trimed_", "") %>%
+      str_replace("TPM_", "") %>%
+      str_replace("Mycelia_4d", "96h") %>%
+      factor(levels = c("0h", "16h", "48h", "96h", "Early", "Late")),
+    logTPM = log2(TPM + 1)
+  )
+
+# === 4. Wilcoxon Test: 96h vs. Other Stages ===
+ref_stage <- "96h"
+compare_stages <- setdiff(levels(expr_long$Stage), ref_stage)
+
+stat_tests <- map_dfr(compare_stages, function(stage) {
+  group1 <- expr_long %>% filter(Stage == ref_stage) %>% pull(logTPM)
+  group2 <- expr_long %>% filter(Stage == stage) %>% pull(logTPM)
+  test <- wilcox.test(group1, group2, exact = FALSE)
+  
+  tibble(
+    Stage = stage,
+    p_value = test$p.value,
+    significance = case_when(
+      p_value < 0.0001 ~ "****",
+      p_value < 0.001  ~ "***",
+      p_value < 0.01   ~ "**",
+      p_value < 0.05   ~ "*",
+      TRUE             ~ "ns"
+    )
+  )
+})
+
+stat_tests$y_pos <- seq(max(expr_long$logTPM) * 1.05, by = 0.3, length.out = nrow(stat_tests))
+
+# === 5. Plot Expression Boxplot ===
+p1 <- ggplot(expr_long, aes(x = Stage, y = logTPM, fill = Stage)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.85) +
+  stat_summary(fun = mean, geom = "point", shape = 21, size = 2, fill = "white") +
+  geom_text(data = stat_tests, aes(x = Stage, y = y_pos, label = significance), inherit.aes = FALSE, size = 5, fontface = "bold") +
+  labs(
+    title = "Expression of Anchor Genes (log2 TPM)",
+    subtitle = "Are genes upregulated at 96h?",
+    x = "Stage", y = "log2(TPM + 1)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set2")
+
+print(p1)
+
+
+
+
+
+########comparisions of log2fold change from different comparisions####################
+
+
+
+
+# === 1. Load Libraries ===
+library(tidyverse)
+
+# === 2. Load Data ===
+l2fc <- read.csv("anchor_gene_list_present_in_any_DEG_n=865_L2FC_summary.csv")
+anchor_genes <- readLines("anchor_gene_list_present_in_any_DEG_n=865.txt")
+
+# === 3. Filter L2FC Data ===
+comparison_order <- c(
+  "Germinating_Cyst_vs_Zoospore",
+  "Mycelia_48h_vs_Germinating_Cyst",
+  "Mycelia_4d_vs_Mycelia_48h",
+  "Early_infection_vs_Mycelia_4d",
+  "Late_infection_vs_Early_infection"
+)
+
+l2fc_filtered <- l2fc %>%
+  filter(gene_id %in% anchor_genes) %>%
+  select(gene_id, all_of(comparison_order))
+
+l2fc_long <- l2fc_filtered %>%
+  pivot_longer(cols = -gene_id, names_to = "Comparison", values_to = "L2FC") %>%
+  mutate(Comparison = factor(Comparison, levels = comparison_order))
+
+# === 4. Paired Wilcoxon Test vs Reference Comparison ===
+ref_comp <- "Mycelia_4d_vs_Mycelia_48h"
+
+fc_stat_tests <- map_dfr(setdiff(comparison_order, ref_comp), function(comp) {
+  df <- l2fc_filtered %>% select(gene_id, !!ref_comp, !!comp) %>% drop_na()
+  test <- wilcox.test(df[[comp]], df[[ref_comp]], paired = TRUE, exact = FALSE)
+  
+  tibble(
+    Comparison = comp,
+    p_value = test$p.value,
+    significance = case_when(
+      p_value < 0.0001 ~ "****",
+      p_value < 0.001  ~ "***",
+      p_value < 0.01   ~ "**",
+      p_value < 0.05   ~ "*",
+      TRUE             ~ "ns"
+    )
+  )
+})
+
+fc_stat_tests$y_pos <- seq(max(l2fc_long$L2FC, na.rm = TRUE) * 1.1, by = 0.4, length.out = nrow(fc_stat_tests))
+
+# === 5. Plot Violin + Boxplot ===
+vibrant_colors <- c(
+  "Germinating_Cyst_vs_Zoospore"        = "#E31A1C",
+  "Mycelia_48h_vs_Germinating_Cyst"     = "#1F78B4",
+  "Mycelia_4d_vs_Mycelia_48h"           = "#33A02C",
+  "Early_infection_vs_Mycelia_4d"       = "#FF7F00",
+  "Late_infection_vs_Early_infection"   = "#6A3D9A"
+)
+
+p2 <- ggplot(l2fc_long, aes(x = Comparison, y = L2FC, fill = Comparison)) +
+  geom_violin(trim = FALSE, alpha = 0.5, width = 1.4, color = NA) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.6, color = "black") +
+  stat_summary(fun = mean, geom = "point", shape = 21, size = 2.5, fill = "white", color = "black") +
+  geom_text(data = fc_stat_tests,
+            aes(x = Comparison, y = y_pos, label = significance),
+            inherit.aes = FALSE, size = 5, fontface = "bold") +
+  labs(
+    title = "Log2 Fold Changes of Anchor Genes",
+    subtitle = "Statistical test: Paired Wilcoxon vs Mycelia_4d_vs_Mycelia_48h",
+    x = "Comparison", y = "log2 Fold Change"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
+  scale_fill_manual(values = vibrant_colors)
+
+print(p2)
